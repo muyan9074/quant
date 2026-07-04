@@ -3,18 +3,21 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>兆易创新近一年交易面板</title>
+  <title>兆易创新量化交易分析面板</title>
   <style>
     :root {
       color-scheme: light;
       --bg: #f5f7fa;
       --panel: #ffffff;
-      --ink: #1f2933;
+      --ink: #182230;
       --muted: #667085;
       --grid: #e4e7ec;
       --up: #d92d20;
       --down: #039855;
       --accent: #2563eb;
+      --warn: #dc6803;
+      --line: #475467;
+      --soft: #f8fafc;
     }
     * { box-sizing: border-box; }
     body {
@@ -24,7 +27,7 @@
       background: var(--bg);
     }
     header {
-      padding: 22px 28px 12px;
+      padding: 22px 28px 14px;
       border-bottom: 1px solid var(--grid);
       background: var(--panel);
     }
@@ -43,22 +46,28 @@
     }
     main {
       display: grid;
-      grid-template-columns: 260px minmax(0, 1fr);
+      grid-template-columns: 320px minmax(0, 1fr);
       gap: 16px;
       padding: 16px;
     }
-    aside {
+    aside, .right {
       display: grid;
       align-content: start;
-      gap: 10px;
+      gap: 12px;
+      min-width: 0;
     }
-    .stat, .chart-wrap {
+    .panel, .stat {
       background: var(--panel);
       border: 1px solid var(--grid);
       border-radius: 8px;
     }
     .stat {
-      padding: 14px;
+      padding: 13px 14px;
+    }
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
     }
     .label {
       color: var(--muted);
@@ -66,13 +75,67 @@
       margin-bottom: 6px;
     }
     .value {
-      font-size: 20px;
+      font-size: 19px;
       font-weight: 700;
+      white-space: nowrap;
     }
-    .chart-wrap {
+    .small {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 5px;
+      line-height: 1.45;
+    }
+    .panel {
+      padding: 14px;
       min-width: 0;
-      padding: 12px;
     }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+    .signal {
+      display: grid;
+      gap: 8px;
+    }
+    .signal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--grid);
+      font-size: 13px;
+    }
+    .signal-row:last-child { border-bottom: 0; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      background: #eef4ff;
+      color: #175cd3;
+      white-space: nowrap;
+    }
+    .badge.up { background: #fef3f2; color: var(--up); }
+    .badge.down { background: #ecfdf3; color: var(--down); }
+    .badge.warn { background: #fffaeb; color: var(--warn); }
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .table th, .table td {
+      padding: 7px 6px;
+      border-bottom: 1px solid var(--grid);
+      text-align: right;
+      white-space: nowrap;
+    }
+    .table th:first-child, .table td:first-child { text-align: left; }
+    .table th { color: var(--muted); font-weight: 600; }
     .toolbar {
       display: flex;
       justify-content: space-between;
@@ -84,7 +147,7 @@
     }
     .legend {
       display: flex;
-      gap: 14px;
+      gap: 12px;
       flex-wrap: wrap;
     }
     .dot {
@@ -92,113 +155,419 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      margin-right: 6px;
+      margin-right: 5px;
       vertical-align: -1px;
     }
     canvas {
       width: 100%;
-      height: 620px;
       display: block;
     }
-    @media (max-width: 860px) {
+    #priceChart { height: 560px; }
+    .subcharts {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .subcharts canvas { height: 260px; }
+    .footnote {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    @media (max-width: 980px) {
       main { grid-template-columns: 1fr; }
-      canvas { height: 560px; }
+      .subcharts { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 560px) {
+      header { padding: 18px 16px 12px; }
+      main { padding: 12px; }
+      .stat-grid { grid-template-columns: 1fr; }
+      #priceChart { height: 520px; }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>兆易创新（603986.SH）近一年交易价格与成交量</h1>
+    <h1>兆易创新（603986.SH）量化交易分析面板</h1>
     <div class="meta">
-      <span>数据来源：Tushare daily</span>
-      <span>区间：20250701 - 20260701</span>
-      <span>生成日期：2026-07-01</span>
+      <span>数据来源：Tushare daily（未复权日线）</span>
+      <span>区间：20250704 - 20260703</span>
+      <span>生成日期：2026-07-04</span>
+      <span id="dataStatus">等待计算</span>
     </div>
   </header>
   <main>
     <aside>
-      <section class="stat"><div class="label">交易日数量</div><div class="value">243</div></section>
-      <section class="stat"><div class="label">收盘价区间</div><div class="value">114.24 - 840.00</div></section>
-      <section class="stat"><div class="label">平均成交量（手）</div><div class="value">373,692</div></section>
-      <section class="stat"><div class="label">最新收盘价</div><div class="value">772.01</div></section>
+      <section class="stat-grid" id="summaryStats"></section>
+      <section class="panel">
+        <h2>交易信号</h2>
+        <div class="signal" id="signals"></div>
+      </section>
+      <section class="panel">
+        <h2>关键价位</h2>
+        <table class="table" id="levelsTable"></table>
+      </section>
+      <section class="panel">
+        <h2>回测结果</h2>
+        <table class="table" id="backtestTable"></table>
+        <div class="small">策略：MA5 上穿 MA20 买入，下穿卖出；收益按收盘价计算，未计手续费和滑点。</div>
+      </section>
+      <section class="panel footnote">
+        本页面所有指标都由内嵌的 Tushare 最新数据在浏览器端计算。重新运行下载脚本后，CSV、JSON、K 线、指标和回测结果会同步更新。
+      </section>
     </aside>
-    <section class="chart-wrap">
-      <div class="toolbar">
-        <div class="legend">
-          <span><i class="dot" style="background: var(--up)"></i>上涨</span>
-          <span><i class="dot" style="background: var(--down)"></i>下跌</span>
-          <span><i class="dot" style="background: var(--accent)"></i>成交量</span>
+    <section class="right">
+      <section class="panel">
+        <div class="toolbar">
+          <div class="legend">
+            <span><i class="dot" style="background: var(--up)"></i>上涨</span>
+            <span><i class="dot" style="background: var(--down)"></i>下跌</span>
+            <span><i class="dot" style="background: #f59e0b"></i>MA5</span>
+            <span><i class="dot" style="background: #2563eb"></i>MA20</span>
+            <span><i class="dot" style="background: #7c3aed"></i>MA60</span>
+            <span><i class="dot" style="background: #98a2b3"></i>布林带</span>
+          </div>
+          <div id="hoverInfo">悬停查看单日 OHLC、成交量和指标</div>
         </div>
-        <div id="hoverInfo">悬停查看单日 OHLC 与成交量</div>
-      </div>
-      <canvas id="chart"></canvas>
+        <canvas id="priceChart"></canvas>
+      </section>
+      <section class="subcharts">
+        <section class="panel">
+          <h2>MACD</h2>
+          <canvas id="macdChart"></canvas>
+        </section>
+        <section class="panel">
+          <h2>RSI / KDJ</h2>
+          <canvas id="oscChart"></canvas>
+        </section>
+        <section class="panel">
+          <h2>策略净值 vs 买入持有</h2>
+          <canvas id="equityChart"></canvas>
+        </section>
+        <section class="panel">
+          <h2>日收益率分布</h2>
+          <canvas id="returnChart"></canvas>
+        </section>
+      </section>
     </section>
   </main>
   <script>
-    const records = [{"ts_code": "603986.SH", "trade_date": "20250701", "open": 126.0, "high": 126.55, "low": 123.51, "close": 124.02, "pre_close": 126.53, "change": -2.51, "pct_chg": -1.9837, "vol": 142875.87, "amount": 1781322.637}, {"ts_code": "603986.SH", "trade_date": "20250702", "open": 123.28, "high": 123.3, "low": 120.1, "close": 120.98, "pre_close": 124.02, "change": -3.04, "pct_chg": -2.4512, "vol": 130681.06, "amount": 1586895.318}, {"ts_code": "603986.SH", "trade_date": "20250703", "open": 120.58, "high": 121.55, "low": 119.0, "close": 119.72, "pre_close": 120.64, "change": -0.92, "pct_chg": -0.7626, "vol": 128590.07, "amount": 1541698.795}, {"ts_code": "603986.SH", "trade_date": "20250704", "open": 119.19, "high": 120.3, "low": 117.51, "close": 118.85, "pre_close": 119.72, "change": -0.87, "pct_chg": -0.7267, "vol": 141826.95, "amount": 1683622.173}, {"ts_code": "603986.SH", "trade_date": "20250707", "open": 118.98, "high": 120.81, "low": 117.86, "close": 120.81, "pre_close": 118.85, "change": 1.96, "pct_chg": 1.6491, "vol": 114584.95, "amount": 1370153.527}, {"ts_code": "603986.SH", "trade_date": "20250708", "open": 123.0, "high": 123.5, "low": 121.01, "close": 121.71, "pre_close": 120.81, "change": 0.9, "pct_chg": 0.745, "vol": 151877.86, "amount": 1854823.191}, {"ts_code": "603986.SH", "trade_date": "20250709", "open": 120.91, "high": 120.99, "low": 119.29, "close": 119.47, "pre_close": 121.71, "change": -2.24, "pct_chg": -1.8404, "vol": 126056.42, "amount": 1512241.902}, {"ts_code": "603986.SH", "trade_date": "20250710", "open": 119.02, "high": 119.87, "low": 118.04, "close": 118.06, "pre_close": 119.47, "change": -1.41, "pct_chg": -1.1802, "vol": 111583.31, "amount": 1322615.181}, {"ts_code": "603986.SH", "trade_date": "20250711", "open": 117.9, "high": 119.1, "low": 117.37, "close": 118.36, "pre_close": 118.06, "change": 0.3, "pct_chg": 0.2541, "vol": 129774.02, "amount": 1537067.954}, {"ts_code": "603986.SH", "trade_date": "20250714", "open": 118.61, "high": 119.2, "low": 117.46, "close": 117.59, "pre_close": 118.36, "change": -0.77, "pct_chg": -0.6506, "vol": 112791.53, "amount": 1331566.268}, {"ts_code": "603986.SH", "trade_date": "20250715", "open": 117.1, "high": 117.56, "low": 114.0, "close": 115.0, "pre_close": 117.59, "change": -2.59, "pct_chg": -2.2026, "vol": 236202.59, "amount": 2718281.579}, {"ts_code": "603986.SH", "trade_date": "20250716", "open": 115.0, "high": 116.4, "low": 114.0, "close": 114.24, "pre_close": 115.0, "change": -0.76, "pct_chg": -0.6609, "vol": 158742.83, "amount": 1826208.291}, {"ts_code": "603986.SH", "trade_date": "20250717", "open": 114.05, "high": 118.19, "low": 113.82, "close": 117.99, "pre_close": 114.24, "change": 3.75, "pct_chg": 3.2826, "vol": 241275.42, "amount": 2805867.152}, {"ts_code": "603986.SH", "trade_date": "20250718", "open": 117.86, "high": 120.3, "low": 116.23, "close": 117.16, "pre_close": 117.99, "change": -0.83, "pct_chg": -0.7034, "vol": 203233.08, "amount": 2391314.587}, {"ts_code": "603986.SH", "trade_date": "20250721", "open": 116.82, "high": 117.53, "low": 115.4, "close": 117.11, "pre_close": 117.16, "change": -0.05, "pct_chg": -0.0427, "vol": 115943.94, "amount": 1350683.002}, {"ts_code": "603986.SH", "trade_date": "20250722", "open": 116.97, "high": 117.33, "low": 115.8, "close": 115.87, "pre_close": 117.11, "change": -1.24, "pct_chg": -1.0588, "vol": 143927.33, "amount": 1672922.189}, {"ts_code": "603986.SH", "trade_date": "20250723", "open": 115.77, "high": 118.36, "low": 115.5, "close": 116.99, "pre_close": 115.87, "change": 1.12, "pct_chg": 0.9666, "vol": 149110.76, "amount": 1741699.657}, {"ts_code": "603986.SH", "trade_date": "20250724", "open": 116.6, "high": 118.0, "low": 115.14, "close": 117.89, "pre_close": 116.99, "change": 0.9, "pct_chg": 0.7693, "vol": 172253.98, "amount": 2011696.442}, {"ts_code": "603986.SH", "trade_date": "20250725", "open": 117.9, "high": 122.0, "low": 117.9, "close": 121.94, "pre_close": 117.89, "change": 4.05, "pct_chg": 3.4354, "vol": 356933.76, "amount": 4286282.667}, {"ts_code": "603986.SH", "trade_date": "20250728", "open": 122.0, "high": 122.2, "low": 119.71, "close": 120.26, "pre_close": 121.94, "change": -1.68, "pct_chg": -1.3777, "vol": 191011.97, "amount": 2302878.681}, {"ts_code": "603986.SH", "trade_date": "20250729", "open": 120.0, "high": 121.5, "low": 119.4, "close": 120.28, "pre_close": 120.26, "change": 0.02, "pct_chg": 0.0166, "vol": 169940.65, "amount": 2042850.877}, {"ts_code": "603986.SH", "trade_date": "20250730", "open": 124.06, "high": 129.67, "low": 123.31, "close": 123.99, "pre_close": 120.28, "change": 3.71, "pct_chg": 3.0845, "vol": 472987.44, "amount": 5957278.63}, {"ts_code": "603986.SH", "trade_date": "20250731", "open": 121.0, "high": 126.8, "low": 120.28, "close": 121.13, "pre_close": 123.99, "change": -2.86, "pct_chg": -2.3066, "vol": 308747.73, "amount": 3788904.668}, {"ts_code": "603986.SH", "trade_date": "20250801", "open": 120.5, "high": 122.1, "low": 117.09, "close": 117.31, "pre_close": 121.13, "change": -3.82, "pct_chg": -3.1536, "vol": 247813.48, "amount": 2946052.922}, {"ts_code": "603986.SH", "trade_date": "20250804", "open": 116.3, "high": 120.2, "low": 116.3, "close": 118.84, "pre_close": 117.31, "change": 1.53, "pct_chg": 1.3042, "vol": 160782.64, "amount": 1902328.181}, {"ts_code": "603986.SH", "trade_date": "20250805", "open": 119.0, "high": 119.3, "low": 117.3, "close": 118.0, "pre_close": 118.84, "change": -0.84, "pct_chg": -0.7068, "vol": 124850.55, "amount": 1471568.918}, {"ts_code": "603986.SH", "trade_date": "20250806", "open": 118.0, "high": 118.65, "low": 117.01, "close": 118.28, "pre_close": 118.0, "change": 0.28, "pct_chg": 0.2373, "vol": 114485.67, "amount": 1349530.061}, {"ts_code": "603986.SH", "trade_date": "20250807", "open": 117.98, "high": 119.2, "low": 117.32, "close": 117.67, "pre_close": 118.28, "change": -0.61, "pct_chg": -0.5157, "vol": 169940.88, "amount": 2007916.589}, {"ts_code": "603986.SH", "trade_date": "20250808", "open": 117.68, "high": 117.68, "low": 116.4, "close": 116.4, "pre_close": 117.67, "change": -1.27, "pct_chg": -1.0793, "vol": 121513.0, "amount": 1418055.203}, {"ts_code": "603986.SH", "trade_date": "20250811", "open": 116.79, "high": 118.5, "low": 116.48, "close": 117.95, "pre_close": 116.4, "change": 1.55, "pct_chg": 1.3316, "vol": 127981.73, "amount": 1508912.168}, {"ts_code": "603986.SH", "trade_date": "20250812", "open": 118.31, "high": 121.5, "low": 117.6, "close": 120.47, "pre_close": 117.95, "change": 2.52, "pct_chg": 2.1365, "vol": 252756.18, "amount": 3025712.891}, {"ts_code": "603986.SH", "trade_date": "20250813", "open": 120.49, "high": 123.0, "low": 119.94, "close": 121.46, "pre_close": 120.47, "change": 0.99, "pct_chg": 0.8218, "vol": 240986.54, "amount": 2925464.097}, {"ts_code": "603986.SH", "trade_date": "20250814", "open": 121.7, "high": 125.49, "low": 120.55, "close": 121.01, "pre_close": 121.46, "change": -0.45, "pct_chg": -0.3705, "vol": 314003.25, "amount": 3865198.49}, {"ts_code": "603986.SH", "trade_date": "20250815", "open": 120.01, "high": 123.5, "low": 120.01, "close": 122.9, "pre_close": 121.01, "change": 1.89, "pct_chg": 1.5619, "vol": 211500.22, "amount": 2590294.402}, {"ts_code": "603986.SH", "trade_date": "20250818", "open": 123.33, "high": 127.98, "low": 121.51, "close": 125.7, "pre_close": 122.9, "change": 2.8, "pct_chg": 2.2783, "vol": 328498.52, "amount": 4106567.032}, {"ts_code": "603986.SH", "trade_date": "20250819", "open": 125.48, "high": 128.88, "low": 122.85, "close": 123.26, "pre_close": 125.7, "change": -2.44, "pct_chg": -1.9411, "vol": 323175.2, "amount": 4046363.006}, {"ts_code": "603986.SH", "trade_date": "20250820", "open": 123.0, "high": 127.25, "low": 122.01, "close": 127.01, "pre_close": 123.26, "change": 3.75, "pct_chg": 3.0423, "vol": 359897.59, "amount": 4494071.401}, {"ts_code": "603986.SH", "trade_date": "20250821", "open": 132.09, "high": 139.71, "low": 132.09, "close": 137.16, "pre_close": 127.01, "change": 10.15, "pct_chg": 7.9915, "vol": 858971.49, "amount": 11832481.427}, {"ts_code": "603986.SH", "trade_date": "20250822", "open": 135.12, "high": 150.88, "low": 135.08, "close": 150.88, "pre_close": 137.16, "change": 13.72, "pct_chg": 10.0029, "vol": 780790.54, "amount": 11210984.976}, {"ts_code": "603986.SH", "trade_date": "20250825", "open": 159.0, "high": 163.5, "low": 152.88, "close": 157.8, "pre_close": 150.88, "change": 6.92, "pct_chg": 4.5864, "vol": 836197.6, "amount": 13172131.297}, {"ts_code": "603986.SH", "trade_date": "20250826", "open": 157.8, "high": 157.8, "low": 152.62, "close": 154.4, "pre_close": 157.8, "change": -3.4, "pct_chg": -2.1546, "vol": 382253.32, "amount": 5917649.65}, {"ts_code": "603986.SH", "trade_date": "20250827", "open": 155.87, "high": 168.5, "low": 152.18, "close": 158.63, "pre_close": 154.4, "change": 4.23, "pct_chg": 2.7396, "vol": 623810.58, "amount": 10014123.48}, {"ts_code": "603986.SH", "trade_date": "20250828", "open": 161.0, "high": 165.8, "low": 159.01, "close": 164.45, "pre_close": 158.63, "change": 5.82, "pct_chg": 3.6689, "vol": 494328.31, "amount": 8027959.133}, {"ts_code": "603986.SH", "trade_date": "20250829", "open": 161.8, "high": 162.0, "low": 156.4, "close": 158.98, "pre_close": 164.45, "change": -5.47, "pct_chg": -3.3262, "vol": 398005.86, "amount": 6325048.099}, {"ts_code": "603986.SH", "trade_date": "20250901", "open": 164.11, "high": 174.88, "low": 157.0, "close": 174.88, "pre_close": 158.98, "change": 15.9, "pct_chg": 10.0013, "vol": 612797.12, "amount": 10223340.506}, {"ts_code": "603986.SH", "trade_date": "20250902", "open": 179.28, "high": 188.0, "low": 173.05, "close": 176.0, "pre_close": 174.88, "change": 1.12, "pct_chg": 0.6404, "vol": 762852.37, "amount": 13736024.58}, {"ts_code": "603986.SH", "trade_date": "20250903", "open": 176.26, "high": 177.73, "low": 168.55, "close": 171.09, "pre_close": 176.0, "change": -4.91, "pct_chg": -2.7898, "vol": 441275.98, "amount": 7587032.736}, {"ts_code": "603986.SH", "trade_date": "20250904", "open": 169.0, "high": 171.07, "low": 153.98, "close": 153.98, "pre_close": 171.09, "change": -17.11, "pct_chg": -10.0006, "vol": 454980.53, "amount": 7284233.85}, {"ts_code": "603986.SH", "trade_date": "20250905", "open": 150.0, "high": 163.99, "low": 145.8, "close": 159.56, "pre_close": 153.98, "change": 5.58, "pct_chg": 3.6238, "vol": 699487.7, "amount": 10700137.153}, {"ts_code": "603986.SH", "trade_date": "20250908", "open": 161.93, "high": 169.0, "low": 159.15, "close": 163.83, "pre_close": 159.56, "change": 4.27, "pct_chg": 2.6761, "vol": 523714.75, "amount": 8602671.849}, {"ts_code": "603986.SH", "trade_date": "20250909", "open": 161.0, "high": 162.8, "low": 154.62, "close": 157.15, "pre_close": 163.83, "change": -6.68, "pct_chg": -4.0774, "vol": 327320.34, "amount": 5191824.525}, {"ts_code": "603986.SH", "trade_date": "20250910", "open": 157.14, "high": 163.25, "low": 155.7, "close": 161.29, "pre_close": 157.15, "change": 4.14, "pct_chg": 2.6344, "vol": 334656.97, "amount": 5358368.655}, {"ts_code": "603986.SH", "trade_date": "20250911", "open": 161.26, "high": 177.42, "low": 160.0, "close": 177.42, "pre_close": 161.29, "change": 16.13, "pct_chg": 10.0006, "vol": 554423.95, "amount": 9422962.073}, {"ts_code": "603986.SH", "trade_date": "20250912", "open": 179.99, "high": 195.16, "low": 177.5, "close": 190.21, "pre_close": 177.42, "change": 12.79, "pct_chg": 7.2089, "vol": 710357.04, "amount": 13432520.618}, {"ts_code": "603986.SH", "trade_date": "20250915", "open": 193.51, "high": 194.5, "low": 186.62, "close": 190.94, "pre_close": 190.21, "change": 0.73, "pct_chg": 0.3838, "vol": 495483.07, "amount": 9469855.424}, {"ts_code": "603986.SH", "trade_date": "20250916", "open": 189.0, "high": 196.8, "low": 186.89, "close": 189.16, "pre_close": 190.94, "change": -1.78, "pct_chg": -0.9322, "vol": 408562.21, "amount": 7810240.314}, {"ts_code": "603986.SH", "trade_date": "20250917", "open": 188.99, "high": 192.58, "low": 182.97, "close": 186.6, "pre_close": 189.16, "change": -2.56, "pct_chg": -1.3534, "vol": 339245.37, "amount": 6358605.811}, {"ts_code": "603986.SH", "trade_date": "20250918", "open": 189.39, "high": 200.85, "low": 186.8, "close": 190.88, "pre_close": 186.6, "change": 4.28, "pct_chg": 2.2937, "vol": 590410.52, "amount": 11381851.203}, {"ts_code": "603986.SH", "trade_date": "20250919", "open": 194.31, "high": 195.88, "low": 184.91, "close": 185.2, "pre_close": 190.88, "change": -5.68, "pct_chg": -2.9757, "vol": 371918.21, "amount": 7051277.593}, {"ts_code": "603986.SH", "trade_date": "20250922", "open": 188.88, "high": 198.09, "low": 186.28, "close": 195.01, "pre_close": 185.2, "change": 9.81, "pct_chg": 5.297, "vol": 411977.69, "amount": 8002507.023}, {"ts_code": "603986.SH", "trade_date": "20250923", "open": 196.0, "high": 201.59, "low": 188.69, "close": 194.07, "pre_close": 195.01, "change": -0.94, "pct_chg": -0.482, "vol": 399945.66, "amount": 7780830.608}, {"ts_code": "603986.SH", "trade_date": "20250924", "open": 194.6, "high": 208.23, "low": 193.0, "close": 199.8, "pre_close": 194.07, "change": 5.73, "pct_chg": 2.9525, "vol": 507020.69, "amount": 10165505.184}, {"ts_code": "603986.SH", "trade_date": "20250925", "open": 199.0, "high": 204.5, "low": 193.1, "close": 197.41, "pre_close": 199.8, "change": -2.39, "pct_chg": -1.1962, "vol": 404275.91, "amount": 8001322.068}, {"ts_code": "603986.SH", "trade_date": "20250926", "open": 196.01, "high": 206.02, "low": 190.21, "close": 190.21, "pre_close": 197.41, "change": -7.2, "pct_chg": -3.6472, "vol": 435200.85, "amount": 8650850.074}, {"ts_code": "603986.SH", "trade_date": "20250929", "open": 196.5, "high": 203.63, "low": 195.1, "close": 197.13, "pre_close": 190.21, "change": 6.92, "pct_chg": 3.6381, "vol": 434877.98, "amount": 8628937.828}, {"ts_code": "603986.SH", "trade_date": "20250930", "open": 204.34, "high": 216.84, "low": 203.0, "close": 213.3, "pre_close": 197.13, "change": 16.17, "pct_chg": 8.2027, "vol": 597864.99, "amount": 12672064.936}, {"ts_code": "603986.SH", "trade_date": "20251009", "open": 222.0, "high": 234.63, "low": 218.6, "close": 225.49, "pre_close": 213.3, "change": 12.19, "pct_chg": 5.715, "vol": 585389.77, "amount": 13293421.697}, {"ts_code": "603986.SH", "trade_date": "20251010", "open": 225.5, "high": 230.5, "low": 212.12, "close": 215.02, "pre_close": 225.49, "change": -10.47, "pct_chg": -4.6432, "vol": 443030.98, "amount": 9636636.022}, {"ts_code": "603986.SH", "trade_date": "20251013", "open": 201.5, "high": 214.9, "low": 201.5, "close": 207.85, "pre_close": 215.02, "change": -7.17, "pct_chg": -3.3346, "vol": 424815.14, "amount": 8843113.207}, {"ts_code": "603986.SH", "trade_date": "20251014", "open": 215.45, "high": 220.53, "low": 193.0, "close": 196.0, "pre_close": 207.85, "change": -11.85, "pct_chg": -5.7012, "vol": 522017.8, "amount": 10762183.994}, {"ts_code": "603986.SH", "trade_date": "20251015", "open": 195.55, "high": 202.4, "low": 186.41, "close": 202.01, "pre_close": 196.0, "change": 6.01, "pct_chg": 3.0663, "vol": 390442.31, "amount": 7587280.731}, {"ts_code": "603986.SH", "trade_date": "20251016", "open": 201.44, "high": 214.8, "low": 198.53, "close": 208.13, "pre_close": 202.01, "change": 6.12, "pct_chg": 3.0296, "vol": 458666.18, "amount": 9577597.463}, {"ts_code": "603986.SH", "trade_date": "20251017", "open": 208.12, "high": 211.5, "low": 201.0, "close": 201.21, "pre_close": 208.13, "change": -6.92, "pct_chg": -3.3248, "vol": 329357.84, "amount": 6777034.048}, {"ts_code": "603986.SH", "trade_date": "20251020", "open": 207.73, "high": 215.0, "low": 203.03, "close": 208.35, "pre_close": 201.21, "change": 7.14, "pct_chg": 3.5485, "vol": 367244.06, "amount": 7696246.687}, {"ts_code": "603986.SH", "trade_date": "20251021", "open": 211.0, "high": 222.0, "low": 209.66, "close": 219.01, "pre_close": 208.35, "change": 10.66, "pct_chg": 5.1164, "vol": 405117.22, "amount": 8794154.72}, {"ts_code": "603986.SH", "trade_date": "20251022", "open": 214.0, "high": 214.0, "low": 205.3, "close": 210.93, "pre_close": 219.01, "change": -8.08, "pct_chg": -3.6893, "vol": 371829.52, "amount": 7766034.297}, {"ts_code": "603986.SH", "trade_date": "20251023", "open": 205.98, "high": 208.1, "low": 200.39, "close": 206.96, "pre_close": 210.93, "change": -3.97, "pct_chg": -1.8821, "vol": 274058.48, "amount": 5585482.986}, {"ts_code": "603986.SH", "trade_date": "20251024", "open": 214.0, "high": 221.88, "low": 212.0, "close": 221.08, "pre_close": 206.96, "change": 14.12, "pct_chg": 6.8226, "vol": 450618.12, "amount": 9805113.356}, {"ts_code": "603986.SH", "trade_date": "20251027", "open": 230.0, "high": 243.19, "low": 222.83, "close": 243.19, "pre_close": 221.08, "change": 22.11, "pct_chg": 10.0009, "vol": 520916.18, "amount": 12070372.38}, {"ts_code": "603986.SH", "trade_date": "20251028", "open": 236.5, "high": 254.44, "low": 234.58, "close": 246.95, "pre_close": 243.19, "change": 3.76, "pct_chg": 1.5461, "vol": 527296.42, "amount": 12909959.81}, {"ts_code": "603986.SH", "trade_date": "20251029", "open": 246.96, "high": 252.63, "low": 236.0, "close": 241.15, "pre_close": 246.95, "change": -5.8, "pct_chg": -2.3487, "vol": 503744.63, "amount": 12221563.111}, {"ts_code": "603986.SH", "trade_date": "20251030", "open": 246.24, "high": 247.0, "low": 231.78, "close": 232.0, "pre_close": 241.15, "change": -9.15, "pct_chg": -3.7943, "vol": 433654.43, "amount": 10345840.392}, {"ts_code": "603986.SH", "trade_date": "20251031", "open": 231.0, "high": 234.68, "low": 216.0, "close": 220.0, "pre_close": 232.0, "change": -12.0, "pct_chg": -5.1724, "vol": 492428.82, "amount": 10882575.346}, {"ts_code": "603986.SH", "trade_date": "20251103", "open": 217.0, "high": 230.68, "low": 216.66, "close": 230.1, "pre_close": 220.0, "change": 10.1, "pct_chg": 4.5909, "vol": 462613.49, "amount": 10367480.649}, {"ts_code": "603986.SH", "trade_date": "20251104", "open": 231.0, "high": 231.22, "low": 222.5, "close": 224.99, "pre_close": 230.1, "change": -5.11, "pct_chg": -2.2208, "vol": 293367.81, "amount": 6624358.513}, {"ts_code": "603986.SH", "trade_date": "20251105", "open": 213.0, "high": 220.49, "low": 210.95, "close": 218.39, "pre_close": 224.99, "change": -6.6, "pct_chg": -2.9335, "vol": 335131.45, "amount": 7203205.727}, {"ts_code": "603986.SH", "trade_date": "20251106", "open": 224.5, "high": 228.0, "low": 222.25, "close": 227.2, "pre_close": 218.39, "change": 8.81, "pct_chg": 4.0341, "vol": 343346.7, "amount": 7753801.39}, {"ts_code": "603986.SH", "trade_date": "20251107", "open": 222.68, "high": 227.89, "low": 219.55, "close": 220.95, "pre_close": 227.2, "change": -6.25, "pct_chg": -2.7509, "vol": 278989.18, "amount": 6232949.914}, {"ts_code": "603986.SH", "trade_date": "20251110", "open": 228.49, "high": 231.45, "low": 212.5, "close": 218.96, "pre_close": 220.95, "change": -1.99, "pct_chg": -0.9007, "vol": 385832.23, "amount": 8553969.468}, {"ts_code": "603986.SH", "trade_date": "20251111", "open": 223.6, "high": 227.01, "low": 216.71, "close": 216.99, "pre_close": 218.96, "change": -1.97, "pct_chg": -0.8997, "vol": 341924.9, "amount": 7601312.659}, {"ts_code": "603986.SH", "trade_date": "20251112", "open": 213.0, "high": 218.58, "low": 207.01, "close": 209.5, "pre_close": 216.99, "change": -7.49, "pct_chg": -3.4518, "vol": 349523.08, "amount": 7391713.965}, {"ts_code": "603986.SH", "trade_date": "20251113", "open": 212.0, "high": 230.45, "low": 211.88, "close": 227.5, "pre_close": 209.5, "change": 18.0, "pct_chg": 8.5919, "vol": 626638.58, "amount": 14161665.405}, {"ts_code": "603986.SH", "trade_date": "20251114", "open": 216.0, "high": 216.49, "low": 205.78, "close": 205.78, "pre_close": 227.5, "change": -21.72, "pct_chg": -9.5473, "vol": 548633.27, "amount": 11531317.142}, {"ts_code": "603986.SH", "trade_date": "20251117", "open": 207.81, "high": 214.74, "low": 206.36, "close": 207.5, "pre_close": 205.78, "change": 1.72, "pct_chg": 0.8358, "vol": 335060.74, "amount": 7029315.417}, {"ts_code": "603986.SH", "trade_date": "20251118", "open": 205.28, "high": 207.58, "low": 201.57, "close": 202.5, "pre_close": 207.5, "change": -5.0, "pct_chg": -2.4096, "vol": 274378.46, "amount": 5596610.403}, {"ts_code": "603986.SH", "trade_date": "20251119", "open": 200.25, "high": 205.5, "low": 199.03, "close": 202.52, "pre_close": 202.5, "change": 0.02, "pct_chg": 0.0099, "vol": 238818.63, "amount": 4835263.416}, {"ts_code": "603986.SH", "trade_date": "20251120", "open": 207.5, "high": 208.0, "low": 198.66, "close": 199.1, "pre_close": 202.52, "change": -3.42, "pct_chg": -1.6887, "vol": 217605.35, "amount": 4376548.543}, {"ts_code": "603986.SH", "trade_date": "20251121", "open": 189.0, "high": 190.57, "low": 182.51, "close": 182.51, "pre_close": 199.1, "change": -16.59, "pct_chg": -8.3325, "vol": 404416.09, "amount": 7512795.79}, {"ts_code": "603986.SH", "trade_date": "20251124", "open": 183.75, "high": 184.75, "low": 176.0, "close": 179.18, "pre_close": 182.51, "change": -3.33, "pct_chg": -1.8246, "vol": 340499.49, "amount": 6102558.863}, {"ts_code": "603986.SH", "trade_date": "20251125", "open": 185.0, "high": 191.6, "low": 184.19, "close": 190.62, "pre_close": 179.18, "change": 11.44, "pct_chg": 6.3846, "vol": 364021.47, "amount": 6845489.696}, {"ts_code": "603986.SH", "trade_date": "20251126", "open": 187.01, "high": 198.88, "low": 186.8, "close": 196.5, "pre_close": 190.62, "change": 5.88, "pct_chg": 3.0847, "vol": 297685.3, "amount": 5796501.768}, {"ts_code": "603986.SH", "trade_date": "20251127", "open": 198.88, "high": 208.0, "low": 198.88, "close": 200.86, "pre_close": 196.5, "change": 4.36, "pct_chg": 2.2188, "vol": 319731.75, "amount": 6535638.163}, {"ts_code": "603986.SH", "trade_date": "20251128", "open": 199.0, "high": 204.35, "low": 196.66, "close": 203.0, "pre_close": 200.86, "change": 2.14, "pct_chg": 1.0654, "vol": 215652.25, "amount": 4334514.87}, {"ts_code": "603986.SH", "trade_date": "20251201", "open": 204.04, "high": 215.45, "low": 201.2, "close": 212.82, "pre_close": 203.0, "change": 9.82, "pct_chg": 4.8374, "vol": 382670.03, "amount": 8001361.362}, {"ts_code": "603986.SH", "trade_date": "20251202", "open": 211.78, "high": 216.79, "low": 208.1, "close": 210.5, "pre_close": 212.82, "change": -2.32, "pct_chg": -1.0901, "vol": 249243.69, "amount": 5283394.789}, {"ts_code": "603986.SH", "trade_date": "20251203", "open": 210.42, "high": 210.99, "low": 206.19, "close": 207.6, "pre_close": 210.5, "change": -2.9, "pct_chg": -1.3777, "vol": 170708.13, "amount": 3550298.44}, {"ts_code": "603986.SH", "trade_date": "20251204", "open": 206.0, "high": 212.98, "low": 201.99, "close": 210.41, "pre_close": 207.6, "change": 2.81, "pct_chg": 1.3536, "vol": 247007.26, "amount": 5130378.877}, {"ts_code": "603986.SH", "trade_date": "20251205", "open": 210.92, "high": 211.0, "low": 205.5, "close": 206.81, "pre_close": 210.41, "change": -3.6, "pct_chg": -1.7109, "vol": 169817.36, "amount": 3517459.255}, {"ts_code": "603986.SH", "trade_date": "20251208", "open": 208.62, "high": 216.97, "low": 207.53, "close": 213.89, "pre_close": 206.81, "change": 7.08, "pct_chg": 3.4234, "vol": 311307.02, "amount": 6624931.659}, {"ts_code": "603986.SH", "trade_date": "20251209", "open": 212.0, "high": 215.3, "low": 209.3, "close": 210.95, "pre_close": 213.89, "change": -2.94, "pct_chg": -1.3745, "vol": 210585.96, "amount": 4464451.196}, {"ts_code": "603986.SH", "trade_date": "20251210", "open": 209.09, "high": 210.2, "low": 203.5, "close": 208.84, "pre_close": 210.95, "change": -2.11, "pct_chg": -1.0002, "vol": 191810.21, "amount": 3972447.948}, {"ts_code": "603986.SH", "trade_date": "20251211", "open": 211.88, "high": 213.0, "low": 207.5, "close": 207.81, "pre_close": 208.84, "change": -1.03, "pct_chg": -0.4932, "vol": 188246.03, "amount": 3953045.79}, {"ts_code": "603986.SH", "trade_date": "20251212", "open": 206.0, "high": 214.44, "low": 204.01, "close": 209.89, "pre_close": 207.81, "change": 2.08, "pct_chg": 1.0009, "vol": 215033.84, "amount": 4488267.448}, {"ts_code": "603986.SH", "trade_date": "20251215", "open": 205.02, "high": 208.68, "low": 203.5, "close": 204.16, "pre_close": 209.89, "change": -5.73, "pct_chg": -2.73, "vol": 175069.42, "amount": 3589589.515}, {"ts_code": "603986.SH", "trade_date": "20251216", "open": 203.0, "high": 205.46, "low": 196.13, "close": 197.86, "pre_close": 204.16, "change": -6.3, "pct_chg": -3.0858, "vol": 204824.72, "amount": 4078991.501}, {"ts_code": "603986.SH", "trade_date": "20251217", "open": 197.01, "high": 202.87, "low": 195.95, "close": 202.18, "pre_close": 197.86, "change": 4.32, "pct_chg": 2.1834, "vol": 190501.58, "amount": 3802859.059}, {"ts_code": "603986.SH", "trade_date": "20251218", "open": 203.5, "high": 218.88, "low": 203.5, "close": 214.45, "pre_close": 202.18, "change": 12.27, "pct_chg": 6.0688, "vol": 418524.71, "amount": 8887246.199}, {"ts_code": "603986.SH", "trade_date": "20251219", "open": 220.0, "high": 221.0, "low": 208.2, "close": 210.21, "pre_close": 214.45, "change": -4.24, "pct_chg": -1.9772, "vol": 332394.8, "amount": 7034876.943}, {"ts_code": "603986.SH", "trade_date": "20251222", "open": 213.51, "high": 219.5, "low": 213.51, "close": 216.46, "pre_close": 210.21, "change": 6.25, "pct_chg": 2.9732, "vol": 253700.57, "amount": 5485534.765}, {"ts_code": "603986.SH", "trade_date": "20251223", "open": 216.99, "high": 221.33, "low": 215.0, "close": 217.38, "pre_close": 216.46, "change": 0.92, "pct_chg": 0.425, "vol": 254297.87, "amount": 5543292.842}, {"ts_code": "603986.SH", "trade_date": "20251224", "open": 220.0, "high": 225.0, "low": 216.2, "close": 224.1, "pre_close": 217.38, "change": 6.72, "pct_chg": 3.0914, "vol": 298409.62, "amount": 6590470.884}, {"ts_code": "603986.SH", "trade_date": "20251225", "open": 223.0, "high": 228.83, "low": 217.33, "close": 222.0, "pre_close": 224.1, "change": -2.1, "pct_chg": -0.9371, "vol": 259400.49, "amount": 5752598.105}, {"ts_code": "603986.SH", "trade_date": "20251226", "open": 221.0, "high": 230.0, "low": 220.0, "close": 226.97, "pre_close": 222.0, "change": 4.97, "pct_chg": 2.2387, "vol": 296631.27, "amount": 6722806.56}, {"ts_code": "603986.SH", "trade_date": "20251229", "open": 225.71, "high": 234.44, "low": 225.0, "close": 227.93, "pre_close": 226.97, "change": 0.96, "pct_chg": 0.423, "vol": 296019.01, "amount": 6772169.788}, {"ts_code": "603986.SH", "trade_date": "20251230", "open": 226.0, "high": 229.54, "low": 219.1, "close": 220.22, "pre_close": 227.93, "change": -7.71, "pct_chg": -3.3826, "vol": 271609.88, "amount": 6063612.93}, {"ts_code": "603986.SH", "trade_date": "20251231", "open": 228.01, "high": 228.88, "low": 212.58, "close": 214.25, "pre_close": 220.22, "change": -5.97, "pct_chg": -2.7109, "vol": 354571.19, "amount": 7741087.427}, {"ts_code": "603986.SH", "trade_date": "20260105", "open": 221.32, "high": 235.68, "low": 221.0, "close": 235.68, "pre_close": 214.25, "change": 21.43, "pct_chg": 10.0023, "vol": 499283.82, "amount": 11560778.68}, {"ts_code": "603986.SH", "trade_date": "20260106", "open": 238.0, "high": 253.33, "low": 234.0, "close": 250.78, "pre_close": 235.68, "change": 15.1, "pct_chg": 6.407, "vol": 507535.5, "amount": 12310629.498}, {"ts_code": "603986.SH", "trade_date": "20260107", "open": 270.0, "high": 273.77, "low": 256.78, "close": 262.5, "pre_close": 250.78, "change": 11.72, "pct_chg": 4.6734, "vol": 545161.79, "amount": 14443385.679}, {"ts_code": "603986.SH", "trade_date": "20260108", "open": 259.0, "high": 267.0, "low": 256.91, "close": 258.75, "pre_close": 262.5, "change": -3.75, "pct_chg": -1.4286, "vol": 314109.13, "amount": 8210508.185}, {"ts_code": "603986.SH", "trade_date": "20260109", "open": 254.55, "high": 254.55, "low": 244.32, "close": 250.05, "pre_close": 258.75, "change": -8.7, "pct_chg": -3.3623, "vol": 395238.31, "amount": 9873211.263}, {"ts_code": "603986.SH", "trade_date": "20260112", "open": 255.22, "high": 264.04, "low": 254.0, "close": 261.83, "pre_close": 250.05, "change": 11.78, "pct_chg": 4.7111, "vol": 403813.07, "amount": 10435793.484}, {"ts_code": "603986.SH", "trade_date": "20260113", "open": 266.0, "high": 275.0, "low": 257.49, "close": 263.5, "pre_close": 261.83, "change": 1.67, "pct_chg": 0.6378, "vol": 461517.76, "amount": 12238674.369}, {"ts_code": "603986.SH", "trade_date": "20260114", "open": 270.0, "high": 271.0, "low": 249.05, "close": 253.0, "pre_close": 263.5, "change": -10.5, "pct_chg": -3.9848, "vol": 447321.34, "amount": 11546200.174}, {"ts_code": "603986.SH", "trade_date": "20260115", "open": 249.61, "high": 257.55, "low": 248.2, "close": 254.96, "pre_close": 253.0, "change": 1.96, "pct_chg": 0.7747, "vol": 283898.37, "amount": 7180430.118}, {"ts_code": "603986.SH", "trade_date": "20260116", "open": 260.03, "high": 280.46, "low": 257.5, "close": 280.46, "pre_close": 254.96, "change": 25.5, "pct_chg": 10.0016, "vol": 553362.13, "amount": 15020119.557}, {"ts_code": "603986.SH", "trade_date": "20260119", "open": 280.6, "high": 292.0, "low": 278.88, "close": 288.45, "pre_close": 280.46, "change": 7.99, "pct_chg": 2.8489, "vol": 463229.95, "amount": 13241198.626}, {"ts_code": "603986.SH", "trade_date": "20260120", "open": 282.9, "high": 297.1, "low": 282.88, "close": 292.0, "pre_close": 288.45, "change": 3.55, "pct_chg": 1.2307, "vol": 389782.32, "amount": 11377429.957}, {"ts_code": "603986.SH", "trade_date": "20260121", "open": 295.0, "high": 314.8, "low": 293.01, "close": 307.65, "pre_close": 292.0, "change": 15.65, "pct_chg": 5.3596, "vol": 404653.97, "amount": 12395709.223}, {"ts_code": "603986.SH", "trade_date": "20260122", "open": 320.0, "high": 320.02, "low": 296.7, "close": 301.47, "pre_close": 307.65, "change": -6.18, "pct_chg": -2.0088, "vol": 450616.97, "amount": 13710967.282}, {"ts_code": "603986.SH", "trade_date": "20260123", "open": 296.0, "high": 310.68, "low": 295.0, "close": 297.25, "pre_close": 301.47, "change": -4.22, "pct_chg": -1.3998, "vol": 349379.69, "amount": 10491781.699}, {"ts_code": "603986.SH", "trade_date": "20260126", "open": 300.0, "high": 308.0, "low": 290.5, "close": 292.6, "pre_close": 297.25, "change": -4.65, "pct_chg": -1.5643, "vol": 272674.78, "amount": 8059039.738}, {"ts_code": "603986.SH", "trade_date": "20260127", "open": 290.0, "high": 312.42, "low": 286.67, "close": 307.26, "pre_close": 292.6, "change": 14.66, "pct_chg": 5.0103, "vol": 380043.68, "amount": 11465752.144}, {"ts_code": "603986.SH", "trade_date": "20260128", "open": 313.88, "high": 328.58, "low": 313.88, "close": 323.68, "pre_close": 307.26, "change": 16.42, "pct_chg": 5.344, "vol": 377179.92, "amount": 12160363.682}, {"ts_code": "603986.SH", "trade_date": "20260129", "open": 329.88, "high": 331.07, "low": 306.99, "close": 307.5, "pre_close": 323.68, "change": -16.18, "pct_chg": -4.9988, "vol": 334245.81, "amount": 10593801.175}, {"ts_code": "603986.SH", "trade_date": "20260130", "open": 315.0, "high": 320.88, "low": 308.01, "close": 314.88, "pre_close": 307.5, "change": 7.38, "pct_chg": 2.4, "vol": 376199.44, "amount": 11864831.688}, {"ts_code": "603986.SH", "trade_date": "20260202", "open": 300.8, "high": 306.09, "low": 283.39, "close": 283.39, "pre_close": 314.88, "change": -31.49, "pct_chg": -10.0006, "vol": 416288.29, "amount": 12094639.949}, {"ts_code": "603986.SH", "trade_date": "20260203", "open": 294.01, "high": 296.6, "low": 285.2, "close": 292.57, "pre_close": 283.39, "change": 9.18, "pct_chg": 3.2394, "vol": 302213.54, "amount": 8812712.425}, {"ts_code": "603986.SH", "trade_date": "20260204", "open": 285.99, "high": 289.5, "low": 279.0, "close": 282.33, "pre_close": 292.57, "change": -10.24, "pct_chg": -3.5, "vol": 270957.63, "amount": 7646576.014}, {"ts_code": "603986.SH", "trade_date": "20260205", "open": 269.94, "high": 279.52, "low": 268.21, "close": 277.74, "pre_close": 282.33, "change": -4.59, "pct_chg": -1.6258, "vol": 229053.52, "amount": 6300761.896}, {"ts_code": "603986.SH", "trade_date": "20260206", "open": 271.0, "high": 280.51, "low": 268.2, "close": 276.17, "pre_close": 277.74, "change": -1.57, "pct_chg": -0.5653, "vol": 186267.14, "amount": 5136089.771}, {"ts_code": "603986.SH", "trade_date": "20260209", "open": 283.97, "high": 294.44, "low": 280.2, "close": 292.98, "pre_close": 276.17, "change": 16.81, "pct_chg": 6.0868, "vol": 283055.21, "amount": 8148122.681}, {"ts_code": "603986.SH", "trade_date": "20260210", "open": 287.13, "high": 291.5, "low": 284.17, "close": 289.9, "pre_close": 292.98, "change": -3.08, "pct_chg": -1.0513, "vol": 215965.54, "amount": 6225459.477}, {"ts_code": "603986.SH", "trade_date": "20260211", "open": 285.0, "high": 286.5, "low": 280.5, "close": 284.59, "pre_close": 289.9, "change": -5.31, "pct_chg": -1.8317, "vol": 173415.5, "amount": 4922177.744}, {"ts_code": "603986.SH", "trade_date": "20260212", "open": 290.5, "high": 305.0, "low": 285.0, "close": 303.24, "pre_close": 284.59, "change": 18.65, "pct_chg": 6.5533, "vol": 300674.34, "amount": 8842653.413}, {"ts_code": "603986.SH", "trade_date": "20260213", "open": 303.24, "high": 317.6, "low": 301.0, "close": 308.7, "pre_close": 303.24, "change": 5.46, "pct_chg": 1.8006, "vol": 299253.71, "amount": 9335277.999}, {"ts_code": "603986.SH", "trade_date": "20260224", "open": 317.5, "high": 331.16, "low": 311.0, "close": 323.05, "pre_close": 308.7, "change": 14.35, "pct_chg": 4.6485, "vol": 302545.4, "amount": 9709224.737}, {"ts_code": "603986.SH", "trade_date": "20260225", "open": 316.0, "high": 317.01, "low": 301.96, "close": 311.32, "pre_close": 323.05, "change": -11.73, "pct_chg": -3.631, "vol": 285728.01, "amount": 8846026.25}, {"ts_code": "603986.SH", "trade_date": "20260226", "open": 316.0, "high": 316.0, "low": 306.05, "close": 309.4, "pre_close": 311.32, "change": -1.92, "pct_chg": -0.6167, "vol": 231052.85, "amount": 7169784.208}, {"ts_code": "603986.SH", "trade_date": "20260227", "open": 303.5, "high": 306.0, "low": 296.69, "close": 300.0, "pre_close": 309.4, "change": -9.4, "pct_chg": -3.0381, "vol": 220968.92, "amount": 6629753.921}, {"ts_code": "603986.SH", "trade_date": "20260302", "open": 290.87, "high": 299.98, "low": 290.55, "close": 293.15, "pre_close": 300.0, "change": -6.85, "pct_chg": -2.2833, "vol": 185132.28, "amount": 5453801.345}, {"ts_code": "603986.SH", "trade_date": "20260303", "open": 295.0, "high": 296.1, "low": 272.59, "close": 272.89, "pre_close": 293.15, "change": -20.26, "pct_chg": -6.9111, "vol": 333293.65, "amount": 9356849.949}, {"ts_code": "603986.SH", "trade_date": "20260304", "open": 272.89, "high": 290.0, "low": 272.89, "close": 279.07, "pre_close": 272.89, "change": 6.18, "pct_chg": 2.2646, "vol": 326916.32, "amount": 9250036.179}, {"ts_code": "603986.SH", "trade_date": "20260305", "open": 288.16, "high": 289.88, "low": 280.23, "close": 282.8, "pre_close": 279.07, "change": 3.73, "pct_chg": 1.3366, "vol": 255299.73, "amount": 7288806.325}, {"ts_code": "603986.SH", "trade_date": "20260306", "open": 277.9, "high": 288.88, "low": 277.56, "close": 284.99, "pre_close": 282.8, "change": 2.19, "pct_chg": 0.7744, "vol": 208575.77, "amount": 5931718.814}, {"ts_code": "603986.SH", "trade_date": "20260309", "open": 273.0, "high": 277.7, "low": 264.0, "close": 276.09, "pre_close": 284.99, "change": -8.9, "pct_chg": -3.1229, "vol": 283545.65, "amount": 7649552.153}, {"ts_code": "603986.SH", "trade_date": "20260310", "open": 284.1, "high": 286.5, "low": 281.18, "close": 285.44, "pre_close": 276.09, "change": 9.35, "pct_chg": 3.3866, "vol": 233537.42, "amount": 6640032.786}, {"ts_code": "603986.SH", "trade_date": "20260311", "open": 288.04, "high": 290.83, "low": 281.32, "close": 281.53, "pre_close": 285.44, "change": -3.91, "pct_chg": -1.3698, "vol": 216498.69, "amount": 6176121.565}, {"ts_code": "603986.SH", "trade_date": "20260312", "open": 279.83, "high": 283.83, "low": 272.43, "close": 274.78, "pre_close": 281.53, "change": -6.75, "pct_chg": -2.3976, "vol": 172327.47, "amount": 4768478.191}, {"ts_code": "603986.SH", "trade_date": "20260313", "open": 270.78, "high": 285.67, "low": 270.78, "close": 278.33, "pre_close": 274.78, "change": 3.55, "pct_chg": 1.2919, "vol": 226137.49, "amount": 6301123.525}, {"ts_code": "603986.SH", "trade_date": "20260316", "open": 280.0, "high": 306.16, "low": 277.0, "close": 306.16, "pre_close": 278.33, "change": 27.83, "pct_chg": 9.9989, "vol": 462735.64, "amount": 13600507.644}, {"ts_code": "603986.SH", "trade_date": "20260317", "open": 306.5, "high": 313.0, "low": 295.88, "close": 296.0, "pre_close": 306.16, "change": -10.16, "pct_chg": -3.3185, "vol": 390000.85, "amount": 11825489.341}, {"ts_code": "603986.SH", "trade_date": "20260318", "open": 305.1, "high": 313.68, "low": 302.0, "close": 311.25, "pre_close": 296.0, "change": 15.25, "pct_chg": 5.152, "vol": 420513.52, "amount": 12995566.647}, {"ts_code": "603986.SH", "trade_date": "20260319", "open": 300.0, "high": 309.71, "low": 297.0, "close": 303.68, "pre_close": 311.25, "change": -7.57, "pct_chg": -2.4321, "vol": 312145.67, "amount": 9443689.781}, {"ts_code": "603986.SH", "trade_date": "20260320", "open": 305.55, "high": 306.7, "low": 290.0, "close": 290.2, "pre_close": 303.68, "change": -13.48, "pct_chg": -4.4389, "vol": 312536.44, "amount": 9259119.964}, {"ts_code": "603986.SH", "trade_date": "20260323", "open": 277.0, "high": 282.88, "low": 271.0, "close": 273.35, "pre_close": 290.2, "change": -16.85, "pct_chg": -5.8063, "vol": 282141.91, "amount": 7806213.396}, {"ts_code": "603986.SH", "trade_date": "20260324", "open": 277.99, "high": 278.0, "low": 256.88, "close": 273.71, "pre_close": 273.35, "change": 0.36, "pct_chg": 0.1317, "vol": 336914.68, "amount": 8936300.507}, {"ts_code": "603986.SH", "trade_date": "20260325", "open": 275.15, "high": 285.8, "low": 275.14, "close": 278.4, "pre_close": 273.71, "change": 4.69, "pct_chg": 1.7135, "vol": 283762.75, "amount": 7947975.811}, {"ts_code": "603986.SH", "trade_date": "20260326", "open": 268.0, "high": 268.7, "low": 260.0, "close": 262.0, "pre_close": 278.4, "change": -16.4, "pct_chg": -5.8908, "vol": 350773.07, "amount": 9217935.594}, {"ts_code": "603986.SH", "trade_date": "20260327", "open": 248.98, "high": 260.18, "low": 240.25, "close": 258.66, "pre_close": 262.0, "change": -3.34, "pct_chg": -1.2748, "vol": 289773.43, "amount": 7291597.265}, {"ts_code": "603986.SH", "trade_date": "20260330", "open": 252.0, "high": 259.54, "low": 250.03, "close": 255.85, "pre_close": 258.66, "change": -2.81, "pct_chg": -1.0864, "vol": 214696.45, "amount": 5470168.275}, {"ts_code": "603986.SH", "trade_date": "20260331", "open": 249.9, "high": 252.0, "low": 236.86, "close": 238.1, "pre_close": 255.85, "change": -17.75, "pct_chg": -6.9377, "vol": 427623.34, "amount": 10377669.656}, {"ts_code": "603986.SH", "trade_date": "20260401", "open": 250.0, "high": 256.1, "low": 243.7, "close": 255.0, "pre_close": 238.1, "change": 16.9, "pct_chg": 7.0979, "vol": 387957.83, "amount": 9693139.251}, {"ts_code": "603986.SH", "trade_date": "20260402", "open": 257.86, "high": 259.8, "low": 245.6, "close": 246.99, "pre_close": 255.0, "change": -8.01, "pct_chg": -3.1412, "vol": 252974.31, "amount": 6367107.416}, {"ts_code": "603986.SH", "trade_date": "20260403", "open": 250.99, "high": 254.6, "low": 247.5, "close": 249.1, "pre_close": 246.99, "change": 2.11, "pct_chg": 0.8543, "vol": 197471.97, "amount": 4948392.995}, {"ts_code": "603986.SH", "trade_date": "20260407", "open": 253.1, "high": 255.96, "low": 248.81, "close": 249.66, "pre_close": 249.1, "change": 0.56, "pct_chg": 0.2248, "vol": 198471.58, "amount": 5011332.74}, {"ts_code": "603986.SH", "trade_date": "20260408", "open": 250.11, "high": 256.96, "low": 243.08, "close": 255.96, "pre_close": 249.66, "change": 6.3, "pct_chg": 2.5234, "vol": 753325.37, "amount": 18866761.51}, {"ts_code": "603986.SH", "trade_date": "20260409", "open": 250.0, "high": 253.49, "low": 243.9, "close": 250.49, "pre_close": 255.96, "change": -5.47, "pct_chg": -2.1371, "vol": 444682.57, "amount": 11053684.068}, {"ts_code": "603986.SH", "trade_date": "20260410", "open": 255.49, "high": 268.32, "low": 255.24, "close": 265.09, "pre_close": 250.49, "change": 14.6, "pct_chg": 5.8286, "vol": 534766.82, "amount": 14080294.764}, {"ts_code": "603986.SH", "trade_date": "20260413", "open": 261.0, "high": 269.84, "low": 260.9, "close": 262.14, "pre_close": 265.09, "change": -2.95, "pct_chg": -1.1128, "vol": 412420.92, "amount": 10896229.97}, {"ts_code": "603986.SH", "trade_date": "20260414", "open": 269.5, "high": 281.23, "low": 266.39, "close": 280.01, "pre_close": 262.14, "change": 17.87, "pct_chg": 6.817, "vol": 466205.21, "amount": 12861207.284}, {"ts_code": "603986.SH", "trade_date": "20260415", "open": 285.0, "high": 287.65, "low": 271.98, "close": 274.0, "pre_close": 280.01, "change": -6.01, "pct_chg": -2.1464, "vol": 396972.6, "amount": 11071707.52}, {"ts_code": "603986.SH", "trade_date": "20260416", "open": 270.1, "high": 287.0, "low": 268.59, "close": 286.73, "pre_close": 274.0, "change": 12.73, "pct_chg": 4.646, "vol": 409336.72, "amount": 11431621.262}, {"ts_code": "603986.SH", "trade_date": "20260417", "open": 284.0, "high": 295.66, "low": 282.9, "close": 288.96, "pre_close": 286.73, "change": 2.23, "pct_chg": 0.7777, "vol": 406321.12, "amount": 11768331.454}, {"ts_code": "603986.SH", "trade_date": "20260420", "open": 293.0, "high": 295.96, "low": 287.12, "close": 290.54, "pre_close": 288.96, "change": 1.58, "pct_chg": 0.5468, "vol": 325642.8, "amount": 9489709.816}, {"ts_code": "603986.SH", "trade_date": "20260421", "open": 290.8, "high": 309.0, "low": 288.25, "close": 306.27, "pre_close": 290.54, "change": 15.73, "pct_chg": 5.4141, "vol": 425834.06, "amount": 12827436.178}, {"ts_code": "603986.SH", "trade_date": "20260422", "open": 303.5, "high": 314.58, "low": 302.51, "close": 313.98, "pre_close": 306.27, "change": 7.71, "pct_chg": 2.5174, "vol": 341661.95, "amount": 10559646.646}, {"ts_code": "603986.SH", "trade_date": "20260423", "open": 326.01, "high": 326.02, "low": 301.9, "close": 304.8, "pre_close": 313.98, "change": -9.18, "pct_chg": -2.9238, "vol": 441997.3, "amount": 13709630.158}, {"ts_code": "603986.SH", "trade_date": "20260424", "open": 305.0, "high": 310.0, "low": 292.81, "close": 297.7, "pre_close": 304.8, "change": -7.1, "pct_chg": -2.3294, "vol": 349105.37, "amount": 10436275.525}, {"ts_code": "603986.SH", "trade_date": "20260427", "open": 301.59, "high": 309.58, "low": 297.75, "close": 303.42, "pre_close": 297.7, "change": 5.72, "pct_chg": 1.9214, "vol": 316354.78, "amount": 9594446.068}, {"ts_code": "603986.SH", "trade_date": "20260428", "open": 305.0, "high": 319.33, "low": 302.02, "close": 307.5, "pre_close": 303.42, "change": 4.08, "pct_chg": 1.3447, "vol": 367942.94, "amount": 11421765.607}, {"ts_code": "603986.SH", "trade_date": "20260429", "open": 303.01, "high": 311.66, "low": 297.0, "close": 308.89, "pre_close": 307.5, "change": 1.39, "pct_chg": 0.452, "vol": 419199.8, "amount": 12787874.125}, {"ts_code": "603986.SH", "trade_date": "20260430", "open": 320.0, "high": 321.0, "low": 306.48, "close": 312.99, "pre_close": 308.89, "change": 4.1, "pct_chg": 1.3273, "vol": 587965.14, "amount": 18516847.87}, {"ts_code": "603986.SH", "trade_date": "20260506", "open": 330.0, "high": 344.29, "low": 330.0, "close": 344.29, "pre_close": 312.99, "change": 31.3, "pct_chg": 10.0003, "vol": 423425.5, "amount": 14465204.492}, {"ts_code": "603986.SH", "trade_date": "20260507", "open": 347.0, "high": 357.36, "low": 339.0, "close": 350.16, "pre_close": 344.29, "change": 5.87, "pct_chg": 1.705, "vol": 523878.82, "amount": 18174549.786}, {"ts_code": "603986.SH", "trade_date": "20260508", "open": 341.0, "high": 343.3, "low": 331.8, "close": 334.1, "pre_close": 350.16, "change": -16.06, "pct_chg": -4.5865, "vol": 440832.73, "amount": 14821436.654}, {"ts_code": "603986.SH", "trade_date": "20260511", "open": 350.1, "high": 367.51, "low": 347.01, "close": 362.13, "pre_close": 334.1, "change": 28.03, "pct_chg": 8.3897, "vol": 575079.07, "amount": 20673848.905}, {"ts_code": "603986.SH", "trade_date": "20260512", "open": 362.14, "high": 362.2, "low": 349.2, "close": 353.55, "pre_close": 362.13, "change": -8.58, "pct_chg": -2.3693, "vol": 405595.51, "amount": 14360590.982}, {"ts_code": "603986.SH", "trade_date": "20260513", "open": 344.0, "high": 366.71, "low": 339.33, "close": 365.0, "pre_close": 353.55, "change": 11.45, "pct_chg": 3.2386, "vol": 484982.84, "amount": 17127399.574}, {"ts_code": "603986.SH", "trade_date": "20260514", "open": 365.05, "high": 373.5, "low": 354.99, "close": 356.19, "pre_close": 365.0, "change": -8.81, "pct_chg": -2.4137, "vol": 408364.64, "amount": 14829461.848}, {"ts_code": "603986.SH", "trade_date": "20260515", "open": 353.0, "high": 384.0, "low": 345.48, "close": 375.34, "pre_close": 356.19, "change": 19.15, "pct_chg": 5.3763, "vol": 624368.11, "amount": 22792196.753}, {"ts_code": "603986.SH", "trade_date": "20260518", "open": 408.58, "high": 412.87, "low": 396.34, "close": 400.0, "pre_close": 375.34, "change": 24.66, "pct_chg": 6.57, "vol": 687984.34, "amount": 27876373.984}, {"ts_code": "603986.SH", "trade_date": "20260519", "open": 390.0, "high": 410.0, "low": 380.02, "close": 404.56, "pre_close": 400.0, "change": 4.56, "pct_chg": 1.14, "vol": 553101.11, "amount": 21805396.34}, {"ts_code": "603986.SH", "trade_date": "20260520", "open": 408.0, "high": 445.02, "low": 407.8, "close": 445.02, "pre_close": 404.56, "change": 40.46, "pct_chg": 10.001, "vol": 610125.55, "amount": 26523529.101}, {"ts_code": "603986.SH", "trade_date": "20260521", "open": 445.02, "high": 464.83, "low": 427.33, "close": 431.9, "pre_close": 445.02, "change": -13.12, "pct_chg": -2.9482, "vol": 632397.68, "amount": 28199401.936}, {"ts_code": "603986.SH", "trade_date": "20260522", "open": 448.0, "high": 472.99, "low": 439.0, "close": 468.74, "pre_close": 431.9, "change": 36.84, "pct_chg": 8.5298, "vol": 637968.89, "amount": 28932072.443}, {"ts_code": "603986.SH", "trade_date": "20260525", "open": 478.11, "high": 515.61, "low": 461.0, "close": 515.6, "pre_close": 468.74, "change": 46.86, "pct_chg": 9.997, "vol": 593614.11, "amount": 29387713.836}, {"ts_code": "603986.SH", "trade_date": "20260526", "open": 510.0, "high": 538.02, "low": 491.2, "close": 526.22, "pre_close": 514.85, "change": 11.37, "pct_chg": 2.2084, "vol": 643383.92, "amount": 33017657.438}, {"ts_code": "603986.SH", "trade_date": "20260527", "open": 541.0, "high": 552.82, "low": 500.0, "close": 514.18, "pre_close": 526.22, "change": -12.04, "pct_chg": -2.288, "vol": 667260.41, "amount": 35341222.581}, {"ts_code": "603986.SH", "trade_date": "20260528", "open": 495.0, "high": 499.5, "low": 470.0, "close": 483.0, "pre_close": 514.18, "change": -31.18, "pct_chg": -6.064, "vol": 623792.2, "amount": 30240489.779}, {"ts_code": "603986.SH", "trade_date": "20260529", "open": 492.66, "high": 496.0, "low": 464.91, "close": 467.01, "pre_close": 483.0, "change": -15.99, "pct_chg": -3.3106, "vol": 558125.42, "amount": 26715074.211}, {"ts_code": "603986.SH", "trade_date": "20260601", "open": 476.0, "high": 489.96, "low": 455.0, "close": 468.0, "pre_close": 467.01, "change": 0.99, "pct_chg": 0.212, "vol": 521586.48, "amount": 24676174.086}, {"ts_code": "603986.SH", "trade_date": "20260602", "open": 471.0, "high": 480.66, "low": 448.11, "close": 474.69, "pre_close": 468.0, "change": 6.69, "pct_chg": 1.4295, "vol": 490192.77, "amount": 23013728.744}, {"ts_code": "603986.SH", "trade_date": "20260603", "open": 478.89, "high": 510.0, "low": 477.0, "close": 492.23, "pre_close": 474.69, "change": 17.54, "pct_chg": 3.695, "vol": 581929.78, "amount": 28838934.89}, {"ts_code": "603986.SH", "trade_date": "20260604", "open": 487.05, "high": 538.0, "low": 485.01, "close": 529.31, "pre_close": 492.23, "change": 37.08, "pct_chg": 7.5331, "vol": 563350.88, "amount": 29302244.793}, {"ts_code": "603986.SH", "trade_date": "20260605", "open": 507.0, "high": 519.8, "low": 484.9, "close": 488.0, "pre_close": 529.31, "change": -41.31, "pct_chg": -7.8045, "vol": 547135.42, "amount": 27565110.091}, {"ts_code": "603986.SH", "trade_date": "20260608", "open": 461.11, "high": 490.7, "low": 451.0, "close": 474.01, "pre_close": 488.0, "change": -13.99, "pct_chg": -2.8668, "vol": 434474.74, "amount": 20573934.017}, {"ts_code": "603986.SH", "trade_date": "20260609", "open": 493.0, "high": 502.88, "low": 477.03, "close": 500.5, "pre_close": 474.01, "change": 26.49, "pct_chg": 5.5885, "vol": 419683.33, "amount": 20592669.384}, {"ts_code": "603986.SH", "trade_date": "20260610", "open": 489.11, "high": 497.26, "low": 475.65, "close": 480.84, "pre_close": 500.5, "change": -19.66, "pct_chg": -3.9281, "vol": 329972.1, "amount": 15988381.63}, {"ts_code": "603986.SH", "trade_date": "20260611", "open": 480.52, "high": 486.0, "low": 471.0, "close": 483.5, "pre_close": 480.84, "change": 2.66, "pct_chg": 0.5532, "vol": 296991.43, "amount": 14211235.696}, {"ts_code": "603986.SH", "trade_date": "20260612", "open": 508.0, "high": 510.0, "low": 481.0, "close": 481.47, "pre_close": 483.5, "change": -2.03, "pct_chg": -0.4199, "vol": 407085.44, "amount": 20201561.53}, {"ts_code": "603986.SH", "trade_date": "20260615", "open": 494.97, "high": 519.0, "low": 476.66, "close": 518.0, "pre_close": 481.47, "change": 36.53, "pct_chg": 7.5872, "vol": 475784.48, "amount": 23934989.159}, {"ts_code": "603986.SH", "trade_date": "20260616", "open": 526.0, "high": 542.84, "low": 517.71, "close": 532.76, "pre_close": 518.0, "change": 14.76, "pct_chg": 2.8494, "vol": 427785.07, "amount": 22673887.613}, {"ts_code": "603986.SH", "trade_date": "20260617", "open": 521.0, "high": 586.04, "low": 521.0, "close": 586.04, "pre_close": 532.76, "change": 53.28, "pct_chg": 10.0008, "vol": 568000.3, "amount": 31598894.526}, {"ts_code": "603986.SH", "trade_date": "20260618", "open": 594.0, "high": 644.64, "low": 586.6, "close": 629.0, "pre_close": 586.04, "change": 42.96, "pct_chg": 7.3306, "vol": 591573.18, "amount": 37016387.91}, {"ts_code": "603986.SH", "trade_date": "20260622", "open": 643.0, "high": 689.7, "low": 635.0, "close": 689.7, "pre_close": 629.0, "change": 60.7, "pct_chg": 9.6502, "vol": 525830.95, "amount": 34699907.688}, {"ts_code": "603986.SH", "trade_date": "20260623", "open": 680.0, "high": 688.8, "low": 636.0, "close": 640.99, "pre_close": 689.7, "change": -48.71, "pct_chg": -7.0625, "vol": 592913.79, "amount": 39089605.51}, {"ts_code": "603986.SH", "trade_date": "20260624", "open": 641.0, "high": 705.09, "low": 630.93, "close": 705.09, "pre_close": 640.99, "change": 64.1, "pct_chg": 10.0002, "vol": 598219.31, "amount": 39944848.281}, {"ts_code": "603986.SH", "trade_date": "20260625", "open": 740.0, "high": 775.39, "low": 735.0, "close": 775.21, "pre_close": 705.09, "change": 70.12, "pct_chg": 9.9448, "vol": 508678.36, "amount": 38432771.374}, {"ts_code": "603986.SH", "trade_date": "20260626", "open": 753.0, "high": 779.0, "low": 732.52, "close": 770.0, "pre_close": 775.21, "change": -5.21, "pct_chg": -0.6721, "vol": 493925.62, "amount": 37418302.893}, {"ts_code": "603986.SH", "trade_date": "20260629", "open": 779.0, "high": 846.66, "low": 750.0, "close": 840.0, "pre_close": 770.0, "change": 70.0, "pct_chg": 9.0909, "vol": 541208.83, "amount": 43149934.642}, {"ts_code": "603986.SH", "trade_date": "20260630", "open": 810.0, "high": 833.0, "low": 781.11, "close": 815.0, "pre_close": 840.0, "change": -25.0, "pct_chg": -2.9762, "vol": 449646.79, "amount": 36399346.133}, {"ts_code": "603986.SH", "trade_date": "20260701", "open": 803.0, "high": 843.38, "low": 753.0, "close": 772.01, "pre_close": 815.0, "change": -42.99, "pct_chg": -5.2748, "vol": 539702.17, "amount": 43202850.798}];
-    const canvas = document.getElementById('chart');
-    const info = document.getElementById('hoverInfo');
-    const ctx = canvas.getContext('2d');
+    const records = [{"ts_code": "603986.SH", "trade_date": "20250704", "open": 119.19, "high": 120.3, "low": 117.51, "close": 118.85, "pre_close": 119.72, "change": -0.87, "pct_chg": -0.7267, "vol": 141826.95, "amount": 1683622.173}, {"ts_code": "603986.SH", "trade_date": "20250707", "open": 118.98, "high": 120.81, "low": 117.86, "close": 120.81, "pre_close": 118.85, "change": 1.96, "pct_chg": 1.6491, "vol": 114584.95, "amount": 1370153.527}, {"ts_code": "603986.SH", "trade_date": "20250708", "open": 123.0, "high": 123.5, "low": 121.01, "close": 121.71, "pre_close": 120.81, "change": 0.9, "pct_chg": 0.745, "vol": 151877.86, "amount": 1854823.191}, {"ts_code": "603986.SH", "trade_date": "20250709", "open": 120.91, "high": 120.99, "low": 119.29, "close": 119.47, "pre_close": 121.71, "change": -2.24, "pct_chg": -1.8404, "vol": 126056.42, "amount": 1512241.902}, {"ts_code": "603986.SH", "trade_date": "20250710", "open": 119.02, "high": 119.87, "low": 118.04, "close": 118.06, "pre_close": 119.47, "change": -1.41, "pct_chg": -1.1802, "vol": 111583.31, "amount": 1322615.181}, {"ts_code": "603986.SH", "trade_date": "20250711", "open": 117.9, "high": 119.1, "low": 117.37, "close": 118.36, "pre_close": 118.06, "change": 0.3, "pct_chg": 0.2541, "vol": 129774.02, "amount": 1537067.954}, {"ts_code": "603986.SH", "trade_date": "20250714", "open": 118.61, "high": 119.2, "low": 117.46, "close": 117.59, "pre_close": 118.36, "change": -0.77, "pct_chg": -0.6506, "vol": 112791.53, "amount": 1331566.268}, {"ts_code": "603986.SH", "trade_date": "20250715", "open": 117.1, "high": 117.56, "low": 114.0, "close": 115.0, "pre_close": 117.59, "change": -2.59, "pct_chg": -2.2026, "vol": 236202.59, "amount": 2718281.579}, {"ts_code": "603986.SH", "trade_date": "20250716", "open": 115.0, "high": 116.4, "low": 114.0, "close": 114.24, "pre_close": 115.0, "change": -0.76, "pct_chg": -0.6609, "vol": 158742.83, "amount": 1826208.291}, {"ts_code": "603986.SH", "trade_date": "20250717", "open": 114.05, "high": 118.19, "low": 113.82, "close": 117.99, "pre_close": 114.24, "change": 3.75, "pct_chg": 3.2826, "vol": 241275.42, "amount": 2805867.152}, {"ts_code": "603986.SH", "trade_date": "20250718", "open": 117.86, "high": 120.3, "low": 116.23, "close": 117.16, "pre_close": 117.99, "change": -0.83, "pct_chg": -0.7034, "vol": 203233.08, "amount": 2391314.587}, {"ts_code": "603986.SH", "trade_date": "20250721", "open": 116.82, "high": 117.53, "low": 115.4, "close": 117.11, "pre_close": 117.16, "change": -0.05, "pct_chg": -0.0427, "vol": 115943.94, "amount": 1350683.002}, {"ts_code": "603986.SH", "trade_date": "20250722", "open": 116.97, "high": 117.33, "low": 115.8, "close": 115.87, "pre_close": 117.11, "change": -1.24, "pct_chg": -1.0588, "vol": 143927.33, "amount": 1672922.189}, {"ts_code": "603986.SH", "trade_date": "20250723", "open": 115.77, "high": 118.36, "low": 115.5, "close": 116.99, "pre_close": 115.87, "change": 1.12, "pct_chg": 0.9666, "vol": 149110.76, "amount": 1741699.657}, {"ts_code": "603986.SH", "trade_date": "20250724", "open": 116.6, "high": 118.0, "low": 115.14, "close": 117.89, "pre_close": 116.99, "change": 0.9, "pct_chg": 0.7693, "vol": 172253.98, "amount": 2011696.442}, {"ts_code": "603986.SH", "trade_date": "20250725", "open": 117.9, "high": 122.0, "low": 117.9, "close": 121.94, "pre_close": 117.89, "change": 4.05, "pct_chg": 3.4354, "vol": 356933.76, "amount": 4286282.667}, {"ts_code": "603986.SH", "trade_date": "20250728", "open": 122.0, "high": 122.2, "low": 119.71, "close": 120.26, "pre_close": 121.94, "change": -1.68, "pct_chg": -1.3777, "vol": 191011.97, "amount": 2302878.681}, {"ts_code": "603986.SH", "trade_date": "20250729", "open": 120.0, "high": 121.5, "low": 119.4, "close": 120.28, "pre_close": 120.26, "change": 0.02, "pct_chg": 0.0166, "vol": 169940.65, "amount": 2042850.877}, {"ts_code": "603986.SH", "trade_date": "20250730", "open": 124.06, "high": 129.67, "low": 123.31, "close": 123.99, "pre_close": 120.28, "change": 3.71, "pct_chg": 3.0845, "vol": 472987.44, "amount": 5957278.63}, {"ts_code": "603986.SH", "trade_date": "20250731", "open": 121.0, "high": 126.8, "low": 120.28, "close": 121.13, "pre_close": 123.99, "change": -2.86, "pct_chg": -2.3066, "vol": 308747.73, "amount": 3788904.668}, {"ts_code": "603986.SH", "trade_date": "20250801", "open": 120.5, "high": 122.1, "low": 117.09, "close": 117.31, "pre_close": 121.13, "change": -3.82, "pct_chg": -3.1536, "vol": 247813.48, "amount": 2946052.922}, {"ts_code": "603986.SH", "trade_date": "20250804", "open": 116.3, "high": 120.2, "low": 116.3, "close": 118.84, "pre_close": 117.31, "change": 1.53, "pct_chg": 1.3042, "vol": 160782.64, "amount": 1902328.181}, {"ts_code": "603986.SH", "trade_date": "20250805", "open": 119.0, "high": 119.3, "low": 117.3, "close": 118.0, "pre_close": 118.84, "change": -0.84, "pct_chg": -0.7068, "vol": 124850.55, "amount": 1471568.918}, {"ts_code": "603986.SH", "trade_date": "20250806", "open": 118.0, "high": 118.65, "low": 117.01, "close": 118.28, "pre_close": 118.0, "change": 0.28, "pct_chg": 0.2373, "vol": 114485.67, "amount": 1349530.061}, {"ts_code": "603986.SH", "trade_date": "20250807", "open": 117.98, "high": 119.2, "low": 117.32, "close": 117.67, "pre_close": 118.28, "change": -0.61, "pct_chg": -0.5157, "vol": 169940.88, "amount": 2007916.589}, {"ts_code": "603986.SH", "trade_date": "20250808", "open": 117.68, "high": 117.68, "low": 116.4, "close": 116.4, "pre_close": 117.67, "change": -1.27, "pct_chg": -1.0793, "vol": 121513.0, "amount": 1418055.203}, {"ts_code": "603986.SH", "trade_date": "20250811", "open": 116.79, "high": 118.5, "low": 116.48, "close": 117.95, "pre_close": 116.4, "change": 1.55, "pct_chg": 1.3316, "vol": 127981.73, "amount": 1508912.168}, {"ts_code": "603986.SH", "trade_date": "20250812", "open": 118.31, "high": 121.5, "low": 117.6, "close": 120.47, "pre_close": 117.95, "change": 2.52, "pct_chg": 2.1365, "vol": 252756.18, "amount": 3025712.891}, {"ts_code": "603986.SH", "trade_date": "20250813", "open": 120.49, "high": 123.0, "low": 119.94, "close": 121.46, "pre_close": 120.47, "change": 0.99, "pct_chg": 0.8218, "vol": 240986.54, "amount": 2925464.097}, {"ts_code": "603986.SH", "trade_date": "20250814", "open": 121.7, "high": 125.49, "low": 120.55, "close": 121.01, "pre_close": 121.46, "change": -0.45, "pct_chg": -0.3705, "vol": 314003.25, "amount": 3865198.49}, {"ts_code": "603986.SH", "trade_date": "20250815", "open": 120.01, "high": 123.5, "low": 120.01, "close": 122.9, "pre_close": 121.01, "change": 1.89, "pct_chg": 1.5619, "vol": 211500.22, "amount": 2590294.402}, {"ts_code": "603986.SH", "trade_date": "20250818", "open": 123.33, "high": 127.98, "low": 121.51, "close": 125.7, "pre_close": 122.9, "change": 2.8, "pct_chg": 2.2783, "vol": 328498.52, "amount": 4106567.032}, {"ts_code": "603986.SH", "trade_date": "20250819", "open": 125.48, "high": 128.88, "low": 122.85, "close": 123.26, "pre_close": 125.7, "change": -2.44, "pct_chg": -1.9411, "vol": 323175.2, "amount": 4046363.006}, {"ts_code": "603986.SH", "trade_date": "20250820", "open": 123.0, "high": 127.25, "low": 122.01, "close": 127.01, "pre_close": 123.26, "change": 3.75, "pct_chg": 3.0423, "vol": 359897.59, "amount": 4494071.401}, {"ts_code": "603986.SH", "trade_date": "20250821", "open": 132.09, "high": 139.71, "low": 132.09, "close": 137.16, "pre_close": 127.01, "change": 10.15, "pct_chg": 7.9915, "vol": 858971.49, "amount": 11832481.427}, {"ts_code": "603986.SH", "trade_date": "20250822", "open": 135.12, "high": 150.88, "low": 135.08, "close": 150.88, "pre_close": 137.16, "change": 13.72, "pct_chg": 10.0029, "vol": 780790.54, "amount": 11210984.976}, {"ts_code": "603986.SH", "trade_date": "20250825", "open": 159.0, "high": 163.5, "low": 152.88, "close": 157.8, "pre_close": 150.88, "change": 6.92, "pct_chg": 4.5864, "vol": 836197.6, "amount": 13172131.297}, {"ts_code": "603986.SH", "trade_date": "20250826", "open": 157.8, "high": 157.8, "low": 152.62, "close": 154.4, "pre_close": 157.8, "change": -3.4, "pct_chg": -2.1546, "vol": 382253.32, "amount": 5917649.65}, {"ts_code": "603986.SH", "trade_date": "20250827", "open": 155.87, "high": 168.5, "low": 152.18, "close": 158.63, "pre_close": 154.4, "change": 4.23, "pct_chg": 2.7396, "vol": 623810.58, "amount": 10014123.48}, {"ts_code": "603986.SH", "trade_date": "20250828", "open": 161.0, "high": 165.8, "low": 159.01, "close": 164.45, "pre_close": 158.63, "change": 5.82, "pct_chg": 3.6689, "vol": 494328.31, "amount": 8027959.133}, {"ts_code": "603986.SH", "trade_date": "20250829", "open": 161.8, "high": 162.0, "low": 156.4, "close": 158.98, "pre_close": 164.45, "change": -5.47, "pct_chg": -3.3262, "vol": 398005.86, "amount": 6325048.099}, {"ts_code": "603986.SH", "trade_date": "20250901", "open": 164.11, "high": 174.88, "low": 157.0, "close": 174.88, "pre_close": 158.98, "change": 15.9, "pct_chg": 10.0013, "vol": 612797.12, "amount": 10223340.506}, {"ts_code": "603986.SH", "trade_date": "20250902", "open": 179.28, "high": 188.0, "low": 173.05, "close": 176.0, "pre_close": 174.88, "change": 1.12, "pct_chg": 0.6404, "vol": 762852.37, "amount": 13736024.58}, {"ts_code": "603986.SH", "trade_date": "20250903", "open": 176.26, "high": 177.73, "low": 168.55, "close": 171.09, "pre_close": 176.0, "change": -4.91, "pct_chg": -2.7898, "vol": 441275.98, "amount": 7587032.736}, {"ts_code": "603986.SH", "trade_date": "20250904", "open": 169.0, "high": 171.07, "low": 153.98, "close": 153.98, "pre_close": 171.09, "change": -17.11, "pct_chg": -10.0006, "vol": 454980.53, "amount": 7284233.85}, {"ts_code": "603986.SH", "trade_date": "20250905", "open": 150.0, "high": 163.99, "low": 145.8, "close": 159.56, "pre_close": 153.98, "change": 5.58, "pct_chg": 3.6238, "vol": 699487.7, "amount": 10700137.153}, {"ts_code": "603986.SH", "trade_date": "20250908", "open": 161.93, "high": 169.0, "low": 159.15, "close": 163.83, "pre_close": 159.56, "change": 4.27, "pct_chg": 2.6761, "vol": 523714.75, "amount": 8602671.849}, {"ts_code": "603986.SH", "trade_date": "20250909", "open": 161.0, "high": 162.8, "low": 154.62, "close": 157.15, "pre_close": 163.83, "change": -6.68, "pct_chg": -4.0774, "vol": 327320.34, "amount": 5191824.525}, {"ts_code": "603986.SH", "trade_date": "20250910", "open": 157.14, "high": 163.25, "low": 155.7, "close": 161.29, "pre_close": 157.15, "change": 4.14, "pct_chg": 2.6344, "vol": 334656.97, "amount": 5358368.655}, {"ts_code": "603986.SH", "trade_date": "20250911", "open": 161.26, "high": 177.42, "low": 160.0, "close": 177.42, "pre_close": 161.29, "change": 16.13, "pct_chg": 10.0006, "vol": 554423.95, "amount": 9422962.073}, {"ts_code": "603986.SH", "trade_date": "20250912", "open": 179.99, "high": 195.16, "low": 177.5, "close": 190.21, "pre_close": 177.42, "change": 12.79, "pct_chg": 7.2089, "vol": 710357.04, "amount": 13432520.618}, {"ts_code": "603986.SH", "trade_date": "20250915", "open": 193.51, "high": 194.5, "low": 186.62, "close": 190.94, "pre_close": 190.21, "change": 0.73, "pct_chg": 0.3838, "vol": 495483.07, "amount": 9469855.424}, {"ts_code": "603986.SH", "trade_date": "20250916", "open": 189.0, "high": 196.8, "low": 186.89, "close": 189.16, "pre_close": 190.94, "change": -1.78, "pct_chg": -0.9322, "vol": 408562.21, "amount": 7810240.314}, {"ts_code": "603986.SH", "trade_date": "20250917", "open": 188.99, "high": 192.58, "low": 182.97, "close": 186.6, "pre_close": 189.16, "change": -2.56, "pct_chg": -1.3534, "vol": 339245.37, "amount": 6358605.811}, {"ts_code": "603986.SH", "trade_date": "20250918", "open": 189.39, "high": 200.85, "low": 186.8, "close": 190.88, "pre_close": 186.6, "change": 4.28, "pct_chg": 2.2937, "vol": 590410.52, "amount": 11381851.203}, {"ts_code": "603986.SH", "trade_date": "20250919", "open": 194.31, "high": 195.88, "low": 184.91, "close": 185.2, "pre_close": 190.88, "change": -5.68, "pct_chg": -2.9757, "vol": 371918.21, "amount": 7051277.593}, {"ts_code": "603986.SH", "trade_date": "20250922", "open": 188.88, "high": 198.09, "low": 186.28, "close": 195.01, "pre_close": 185.2, "change": 9.81, "pct_chg": 5.297, "vol": 411977.69, "amount": 8002507.023}, {"ts_code": "603986.SH", "trade_date": "20250923", "open": 196.0, "high": 201.59, "low": 188.69, "close": 194.07, "pre_close": 195.01, "change": -0.94, "pct_chg": -0.482, "vol": 399945.66, "amount": 7780830.608}, {"ts_code": "603986.SH", "trade_date": "20250924", "open": 194.6, "high": 208.23, "low": 193.0, "close": 199.8, "pre_close": 194.07, "change": 5.73, "pct_chg": 2.9525, "vol": 507020.69, "amount": 10165505.184}, {"ts_code": "603986.SH", "trade_date": "20250925", "open": 199.0, "high": 204.5, "low": 193.1, "close": 197.41, "pre_close": 199.8, "change": -2.39, "pct_chg": -1.1962, "vol": 404275.91, "amount": 8001322.068}, {"ts_code": "603986.SH", "trade_date": "20250926", "open": 196.01, "high": 206.02, "low": 190.21, "close": 190.21, "pre_close": 197.41, "change": -7.2, "pct_chg": -3.6472, "vol": 435200.85, "amount": 8650850.074}, {"ts_code": "603986.SH", "trade_date": "20250929", "open": 196.5, "high": 203.63, "low": 195.1, "close": 197.13, "pre_close": 190.21, "change": 6.92, "pct_chg": 3.6381, "vol": 434877.98, "amount": 8628937.828}, {"ts_code": "603986.SH", "trade_date": "20250930", "open": 204.34, "high": 216.84, "low": 203.0, "close": 213.3, "pre_close": 197.13, "change": 16.17, "pct_chg": 8.2027, "vol": 597864.99, "amount": 12672064.936}, {"ts_code": "603986.SH", "trade_date": "20251009", "open": 222.0, "high": 234.63, "low": 218.6, "close": 225.49, "pre_close": 213.3, "change": 12.19, "pct_chg": 5.715, "vol": 585389.77, "amount": 13293421.697}, {"ts_code": "603986.SH", "trade_date": "20251010", "open": 225.5, "high": 230.5, "low": 212.12, "close": 215.02, "pre_close": 225.49, "change": -10.47, "pct_chg": -4.6432, "vol": 443030.98, "amount": 9636636.022}, {"ts_code": "603986.SH", "trade_date": "20251013", "open": 201.5, "high": 214.9, "low": 201.5, "close": 207.85, "pre_close": 215.02, "change": -7.17, "pct_chg": -3.3346, "vol": 424815.14, "amount": 8843113.207}, {"ts_code": "603986.SH", "trade_date": "20251014", "open": 215.45, "high": 220.53, "low": 193.0, "close": 196.0, "pre_close": 207.85, "change": -11.85, "pct_chg": -5.7012, "vol": 522017.8, "amount": 10762183.994}, {"ts_code": "603986.SH", "trade_date": "20251015", "open": 195.55, "high": 202.4, "low": 186.41, "close": 202.01, "pre_close": 196.0, "change": 6.01, "pct_chg": 3.0663, "vol": 390442.31, "amount": 7587280.731}, {"ts_code": "603986.SH", "trade_date": "20251016", "open": 201.44, "high": 214.8, "low": 198.53, "close": 208.13, "pre_close": 202.01, "change": 6.12, "pct_chg": 3.0296, "vol": 458666.18, "amount": 9577597.463}, {"ts_code": "603986.SH", "trade_date": "20251017", "open": 208.12, "high": 211.5, "low": 201.0, "close": 201.21, "pre_close": 208.13, "change": -6.92, "pct_chg": -3.3248, "vol": 329357.84, "amount": 6777034.048}, {"ts_code": "603986.SH", "trade_date": "20251020", "open": 207.73, "high": 215.0, "low": 203.03, "close": 208.35, "pre_close": 201.21, "change": 7.14, "pct_chg": 3.5485, "vol": 367244.06, "amount": 7696246.687}, {"ts_code": "603986.SH", "trade_date": "20251021", "open": 211.0, "high": 222.0, "low": 209.66, "close": 219.01, "pre_close": 208.35, "change": 10.66, "pct_chg": 5.1164, "vol": 405117.22, "amount": 8794154.72}, {"ts_code": "603986.SH", "trade_date": "20251022", "open": 214.0, "high": 214.0, "low": 205.3, "close": 210.93, "pre_close": 219.01, "change": -8.08, "pct_chg": -3.6893, "vol": 371829.52, "amount": 7766034.297}, {"ts_code": "603986.SH", "trade_date": "20251023", "open": 205.98, "high": 208.1, "low": 200.39, "close": 206.96, "pre_close": 210.93, "change": -3.97, "pct_chg": -1.8821, "vol": 274058.48, "amount": 5585482.986}, {"ts_code": "603986.SH", "trade_date": "20251024", "open": 214.0, "high": 221.88, "low": 212.0, "close": 221.08, "pre_close": 206.96, "change": 14.12, "pct_chg": 6.8226, "vol": 450618.12, "amount": 9805113.356}, {"ts_code": "603986.SH", "trade_date": "20251027", "open": 230.0, "high": 243.19, "low": 222.83, "close": 243.19, "pre_close": 221.08, "change": 22.11, "pct_chg": 10.0009, "vol": 520916.18, "amount": 12070372.38}, {"ts_code": "603986.SH", "trade_date": "20251028", "open": 236.5, "high": 254.44, "low": 234.58, "close": 246.95, "pre_close": 243.19, "change": 3.76, "pct_chg": 1.5461, "vol": 527296.42, "amount": 12909959.81}, {"ts_code": "603986.SH", "trade_date": "20251029", "open": 246.96, "high": 252.63, "low": 236.0, "close": 241.15, "pre_close": 246.95, "change": -5.8, "pct_chg": -2.3487, "vol": 503744.63, "amount": 12221563.111}, {"ts_code": "603986.SH", "trade_date": "20251030", "open": 246.24, "high": 247.0, "low": 231.78, "close": 232.0, "pre_close": 241.15, "change": -9.15, "pct_chg": -3.7943, "vol": 433654.43, "amount": 10345840.392}, {"ts_code": "603986.SH", "trade_date": "20251031", "open": 231.0, "high": 234.68, "low": 216.0, "close": 220.0, "pre_close": 232.0, "change": -12.0, "pct_chg": -5.1724, "vol": 492428.82, "amount": 10882575.346}, {"ts_code": "603986.SH", "trade_date": "20251103", "open": 217.0, "high": 230.68, "low": 216.66, "close": 230.1, "pre_close": 220.0, "change": 10.1, "pct_chg": 4.5909, "vol": 462613.49, "amount": 10367480.649}, {"ts_code": "603986.SH", "trade_date": "20251104", "open": 231.0, "high": 231.22, "low": 222.5, "close": 224.99, "pre_close": 230.1, "change": -5.11, "pct_chg": -2.2208, "vol": 293367.81, "amount": 6624358.513}, {"ts_code": "603986.SH", "trade_date": "20251105", "open": 213.0, "high": 220.49, "low": 210.95, "close": 218.39, "pre_close": 224.99, "change": -6.6, "pct_chg": -2.9335, "vol": 335131.45, "amount": 7203205.727}, {"ts_code": "603986.SH", "trade_date": "20251106", "open": 224.5, "high": 228.0, "low": 222.25, "close": 227.2, "pre_close": 218.39, "change": 8.81, "pct_chg": 4.0341, "vol": 343346.7, "amount": 7753801.39}, {"ts_code": "603986.SH", "trade_date": "20251107", "open": 222.68, "high": 227.89, "low": 219.55, "close": 220.95, "pre_close": 227.2, "change": -6.25, "pct_chg": -2.7509, "vol": 278989.18, "amount": 6232949.914}, {"ts_code": "603986.SH", "trade_date": "20251110", "open": 228.49, "high": 231.45, "low": 212.5, "close": 218.96, "pre_close": 220.95, "change": -1.99, "pct_chg": -0.9007, "vol": 385832.23, "amount": 8553969.468}, {"ts_code": "603986.SH", "trade_date": "20251111", "open": 223.6, "high": 227.01, "low": 216.71, "close": 216.99, "pre_close": 218.96, "change": -1.97, "pct_chg": -0.8997, "vol": 341924.9, "amount": 7601312.659}, {"ts_code": "603986.SH", "trade_date": "20251112", "open": 213.0, "high": 218.58, "low": 207.01, "close": 209.5, "pre_close": 216.99, "change": -7.49, "pct_chg": -3.4518, "vol": 349523.08, "amount": 7391713.965}, {"ts_code": "603986.SH", "trade_date": "20251113", "open": 212.0, "high": 230.45, "low": 211.88, "close": 227.5, "pre_close": 209.5, "change": 18.0, "pct_chg": 8.5919, "vol": 626638.58, "amount": 14161665.405}, {"ts_code": "603986.SH", "trade_date": "20251114", "open": 216.0, "high": 216.49, "low": 205.78, "close": 205.78, "pre_close": 227.5, "change": -21.72, "pct_chg": -9.5473, "vol": 548633.27, "amount": 11531317.142}, {"ts_code": "603986.SH", "trade_date": "20251117", "open": 207.81, "high": 214.74, "low": 206.36, "close": 207.5, "pre_close": 205.78, "change": 1.72, "pct_chg": 0.8358, "vol": 335060.74, "amount": 7029315.417}, {"ts_code": "603986.SH", "trade_date": "20251118", "open": 205.28, "high": 207.58, "low": 201.57, "close": 202.5, "pre_close": 207.5, "change": -5.0, "pct_chg": -2.4096, "vol": 274378.46, "amount": 5596610.403}, {"ts_code": "603986.SH", "trade_date": "20251119", "open": 200.25, "high": 205.5, "low": 199.03, "close": 202.52, "pre_close": 202.5, "change": 0.02, "pct_chg": 0.0099, "vol": 238818.63, "amount": 4835263.416}, {"ts_code": "603986.SH", "trade_date": "20251120", "open": 207.5, "high": 208.0, "low": 198.66, "close": 199.1, "pre_close": 202.52, "change": -3.42, "pct_chg": -1.6887, "vol": 217605.35, "amount": 4376548.543}, {"ts_code": "603986.SH", "trade_date": "20251121", "open": 189.0, "high": 190.57, "low": 182.51, "close": 182.51, "pre_close": 199.1, "change": -16.59, "pct_chg": -8.3325, "vol": 404416.09, "amount": 7512795.79}, {"ts_code": "603986.SH", "trade_date": "20251124", "open": 183.75, "high": 184.75, "low": 176.0, "close": 179.18, "pre_close": 182.51, "change": -3.33, "pct_chg": -1.8246, "vol": 340499.49, "amount": 6102558.863}, {"ts_code": "603986.SH", "trade_date": "20251125", "open": 185.0, "high": 191.6, "low": 184.19, "close": 190.62, "pre_close": 179.18, "change": 11.44, "pct_chg": 6.3846, "vol": 364021.47, "amount": 6845489.696}, {"ts_code": "603986.SH", "trade_date": "20251126", "open": 187.01, "high": 198.88, "low": 186.8, "close": 196.5, "pre_close": 190.62, "change": 5.88, "pct_chg": 3.0847, "vol": 297685.3, "amount": 5796501.768}, {"ts_code": "603986.SH", "trade_date": "20251127", "open": 198.88, "high": 208.0, "low": 198.88, "close": 200.86, "pre_close": 196.5, "change": 4.36, "pct_chg": 2.2188, "vol": 319731.75, "amount": 6535638.163}, {"ts_code": "603986.SH", "trade_date": "20251128", "open": 199.0, "high": 204.35, "low": 196.66, "close": 203.0, "pre_close": 200.86, "change": 2.14, "pct_chg": 1.0654, "vol": 215652.25, "amount": 4334514.87}, {"ts_code": "603986.SH", "trade_date": "20251201", "open": 204.04, "high": 215.45, "low": 201.2, "close": 212.82, "pre_close": 203.0, "change": 9.82, "pct_chg": 4.8374, "vol": 382670.03, "amount": 8001361.362}, {"ts_code": "603986.SH", "trade_date": "20251202", "open": 211.78, "high": 216.79, "low": 208.1, "close": 210.5, "pre_close": 212.82, "change": -2.32, "pct_chg": -1.0901, "vol": 249243.69, "amount": 5283394.789}, {"ts_code": "603986.SH", "trade_date": "20251203", "open": 210.42, "high": 210.99, "low": 206.19, "close": 207.6, "pre_close": 210.5, "change": -2.9, "pct_chg": -1.3777, "vol": 170708.13, "amount": 3550298.44}, {"ts_code": "603986.SH", "trade_date": "20251204", "open": 206.0, "high": 212.98, "low": 201.99, "close": 210.41, "pre_close": 207.6, "change": 2.81, "pct_chg": 1.3536, "vol": 247007.26, "amount": 5130378.877}, {"ts_code": "603986.SH", "trade_date": "20251205", "open": 210.92, "high": 211.0, "low": 205.5, "close": 206.81, "pre_close": 210.41, "change": -3.6, "pct_chg": -1.7109, "vol": 169817.36, "amount": 3517459.255}, {"ts_code": "603986.SH", "trade_date": "20251208", "open": 208.62, "high": 216.97, "low": 207.53, "close": 213.89, "pre_close": 206.81, "change": 7.08, "pct_chg": 3.4234, "vol": 311307.02, "amount": 6624931.659}, {"ts_code": "603986.SH", "trade_date": "20251209", "open": 212.0, "high": 215.3, "low": 209.3, "close": 210.95, "pre_close": 213.89, "change": -2.94, "pct_chg": -1.3745, "vol": 210585.96, "amount": 4464451.196}, {"ts_code": "603986.SH", "trade_date": "20251210", "open": 209.09, "high": 210.2, "low": 203.5, "close": 208.84, "pre_close": 210.95, "change": -2.11, "pct_chg": -1.0002, "vol": 191810.21, "amount": 3972447.948}, {"ts_code": "603986.SH", "trade_date": "20251211", "open": 211.88, "high": 213.0, "low": 207.5, "close": 207.81, "pre_close": 208.84, "change": -1.03, "pct_chg": -0.4932, "vol": 188246.03, "amount": 3953045.79}, {"ts_code": "603986.SH", "trade_date": "20251212", "open": 206.0, "high": 214.44, "low": 204.01, "close": 209.89, "pre_close": 207.81, "change": 2.08, "pct_chg": 1.0009, "vol": 215033.84, "amount": 4488267.448}, {"ts_code": "603986.SH", "trade_date": "20251215", "open": 205.02, "high": 208.68, "low": 203.5, "close": 204.16, "pre_close": 209.89, "change": -5.73, "pct_chg": -2.73, "vol": 175069.42, "amount": 3589589.515}, {"ts_code": "603986.SH", "trade_date": "20251216", "open": 203.0, "high": 205.46, "low": 196.13, "close": 197.86, "pre_close": 204.16, "change": -6.3, "pct_chg": -3.0858, "vol": 204824.72, "amount": 4078991.501}, {"ts_code": "603986.SH", "trade_date": "20251217", "open": 197.01, "high": 202.87, "low": 195.95, "close": 202.18, "pre_close": 197.86, "change": 4.32, "pct_chg": 2.1834, "vol": 190501.58, "amount": 3802859.059}, {"ts_code": "603986.SH", "trade_date": "20251218", "open": 203.5, "high": 218.88, "low": 203.5, "close": 214.45, "pre_close": 202.18, "change": 12.27, "pct_chg": 6.0688, "vol": 418524.71, "amount": 8887246.199}, {"ts_code": "603986.SH", "trade_date": "20251219", "open": 220.0, "high": 221.0, "low": 208.2, "close": 210.21, "pre_close": 214.45, "change": -4.24, "pct_chg": -1.9772, "vol": 332394.8, "amount": 7034876.943}, {"ts_code": "603986.SH", "trade_date": "20251222", "open": 213.51, "high": 219.5, "low": 213.51, "close": 216.46, "pre_close": 210.21, "change": 6.25, "pct_chg": 2.9732, "vol": 253700.57, "amount": 5485534.765}, {"ts_code": "603986.SH", "trade_date": "20251223", "open": 216.99, "high": 221.33, "low": 215.0, "close": 217.38, "pre_close": 216.46, "change": 0.92, "pct_chg": 0.425, "vol": 254297.87, "amount": 5543292.842}, {"ts_code": "603986.SH", "trade_date": "20251224", "open": 220.0, "high": 225.0, "low": 216.2, "close": 224.1, "pre_close": 217.38, "change": 6.72, "pct_chg": 3.0914, "vol": 298409.62, "amount": 6590470.884}, {"ts_code": "603986.SH", "trade_date": "20251225", "open": 223.0, "high": 228.83, "low": 217.33, "close": 222.0, "pre_close": 224.1, "change": -2.1, "pct_chg": -0.9371, "vol": 259400.49, "amount": 5752598.105}, {"ts_code": "603986.SH", "trade_date": "20251226", "open": 221.0, "high": 230.0, "low": 220.0, "close": 226.97, "pre_close": 222.0, "change": 4.97, "pct_chg": 2.2387, "vol": 296631.27, "amount": 6722806.56}, {"ts_code": "603986.SH", "trade_date": "20251229", "open": 225.71, "high": 234.44, "low": 225.0, "close": 227.93, "pre_close": 226.97, "change": 0.96, "pct_chg": 0.423, "vol": 296019.01, "amount": 6772169.788}, {"ts_code": "603986.SH", "trade_date": "20251230", "open": 226.0, "high": 229.54, "low": 219.1, "close": 220.22, "pre_close": 227.93, "change": -7.71, "pct_chg": -3.3826, "vol": 271609.88, "amount": 6063612.93}, {"ts_code": "603986.SH", "trade_date": "20251231", "open": 228.01, "high": 228.88, "low": 212.58, "close": 214.25, "pre_close": 220.22, "change": -5.97, "pct_chg": -2.7109, "vol": 354571.19, "amount": 7741087.427}, {"ts_code": "603986.SH", "trade_date": "20260105", "open": 221.32, "high": 235.68, "low": 221.0, "close": 235.68, "pre_close": 214.25, "change": 21.43, "pct_chg": 10.0023, "vol": 499283.82, "amount": 11560778.68}, {"ts_code": "603986.SH", "trade_date": "20260106", "open": 238.0, "high": 253.33, "low": 234.0, "close": 250.78, "pre_close": 235.68, "change": 15.1, "pct_chg": 6.407, "vol": 507535.5, "amount": 12310629.498}, {"ts_code": "603986.SH", "trade_date": "20260107", "open": 270.0, "high": 273.77, "low": 256.78, "close": 262.5, "pre_close": 250.78, "change": 11.72, "pct_chg": 4.6734, "vol": 545161.79, "amount": 14443385.679}, {"ts_code": "603986.SH", "trade_date": "20260108", "open": 259.0, "high": 267.0, "low": 256.91, "close": 258.75, "pre_close": 262.5, "change": -3.75, "pct_chg": -1.4286, "vol": 314109.13, "amount": 8210508.185}, {"ts_code": "603986.SH", "trade_date": "20260109", "open": 254.55, "high": 254.55, "low": 244.32, "close": 250.05, "pre_close": 258.75, "change": -8.7, "pct_chg": -3.3623, "vol": 395238.31, "amount": 9873211.263}, {"ts_code": "603986.SH", "trade_date": "20260112", "open": 255.22, "high": 264.04, "low": 254.0, "close": 261.83, "pre_close": 250.05, "change": 11.78, "pct_chg": 4.7111, "vol": 403813.07, "amount": 10435793.484}, {"ts_code": "603986.SH", "trade_date": "20260113", "open": 266.0, "high": 275.0, "low": 257.49, "close": 263.5, "pre_close": 261.83, "change": 1.67, "pct_chg": 0.6378, "vol": 461517.76, "amount": 12238674.369}, {"ts_code": "603986.SH", "trade_date": "20260114", "open": 270.0, "high": 271.0, "low": 249.05, "close": 253.0, "pre_close": 263.5, "change": -10.5, "pct_chg": -3.9848, "vol": 447321.34, "amount": 11546200.174}, {"ts_code": "603986.SH", "trade_date": "20260115", "open": 249.61, "high": 257.55, "low": 248.2, "close": 254.96, "pre_close": 253.0, "change": 1.96, "pct_chg": 0.7747, "vol": 283898.37, "amount": 7180430.118}, {"ts_code": "603986.SH", "trade_date": "20260116", "open": 260.03, "high": 280.46, "low": 257.5, "close": 280.46, "pre_close": 254.96, "change": 25.5, "pct_chg": 10.0016, "vol": 553362.13, "amount": 15020119.557}, {"ts_code": "603986.SH", "trade_date": "20260119", "open": 280.6, "high": 292.0, "low": 278.88, "close": 288.45, "pre_close": 280.46, "change": 7.99, "pct_chg": 2.8489, "vol": 463229.95, "amount": 13241198.626}, {"ts_code": "603986.SH", "trade_date": "20260120", "open": 282.9, "high": 297.1, "low": 282.88, "close": 292.0, "pre_close": 288.45, "change": 3.55, "pct_chg": 1.2307, "vol": 389782.32, "amount": 11377429.957}, {"ts_code": "603986.SH", "trade_date": "20260121", "open": 295.0, "high": 314.8, "low": 293.01, "close": 307.65, "pre_close": 292.0, "change": 15.65, "pct_chg": 5.3596, "vol": 404653.97, "amount": 12395709.223}, {"ts_code": "603986.SH", "trade_date": "20260122", "open": 320.0, "high": 320.02, "low": 296.7, "close": 301.47, "pre_close": 307.65, "change": -6.18, "pct_chg": -2.0088, "vol": 450616.97, "amount": 13710967.282}, {"ts_code": "603986.SH", "trade_date": "20260123", "open": 296.0, "high": 310.68, "low": 295.0, "close": 297.25, "pre_close": 301.47, "change": -4.22, "pct_chg": -1.3998, "vol": 349379.69, "amount": 10491781.699}, {"ts_code": "603986.SH", "trade_date": "20260126", "open": 300.0, "high": 308.0, "low": 290.5, "close": 292.6, "pre_close": 297.25, "change": -4.65, "pct_chg": -1.5643, "vol": 272674.78, "amount": 8059039.738}, {"ts_code": "603986.SH", "trade_date": "20260127", "open": 290.0, "high": 312.42, "low": 286.67, "close": 307.26, "pre_close": 292.6, "change": 14.66, "pct_chg": 5.0103, "vol": 380043.68, "amount": 11465752.144}, {"ts_code": "603986.SH", "trade_date": "20260128", "open": 313.88, "high": 328.58, "low": 313.88, "close": 323.68, "pre_close": 307.26, "change": 16.42, "pct_chg": 5.344, "vol": 377179.92, "amount": 12160363.682}, {"ts_code": "603986.SH", "trade_date": "20260129", "open": 329.88, "high": 331.07, "low": 306.99, "close": 307.5, "pre_close": 323.68, "change": -16.18, "pct_chg": -4.9988, "vol": 334245.81, "amount": 10593801.175}, {"ts_code": "603986.SH", "trade_date": "20260130", "open": 315.0, "high": 320.88, "low": 308.01, "close": 314.88, "pre_close": 307.5, "change": 7.38, "pct_chg": 2.4, "vol": 376199.44, "amount": 11864831.688}, {"ts_code": "603986.SH", "trade_date": "20260202", "open": 300.8, "high": 306.09, "low": 283.39, "close": 283.39, "pre_close": 314.88, "change": -31.49, "pct_chg": -10.0006, "vol": 416288.29, "amount": 12094639.949}, {"ts_code": "603986.SH", "trade_date": "20260203", "open": 294.01, "high": 296.6, "low": 285.2, "close": 292.57, "pre_close": 283.39, "change": 9.18, "pct_chg": 3.2394, "vol": 302213.54, "amount": 8812712.425}, {"ts_code": "603986.SH", "trade_date": "20260204", "open": 285.99, "high": 289.5, "low": 279.0, "close": 282.33, "pre_close": 292.57, "change": -10.24, "pct_chg": -3.5, "vol": 270957.63, "amount": 7646576.014}, {"ts_code": "603986.SH", "trade_date": "20260205", "open": 269.94, "high": 279.52, "low": 268.21, "close": 277.74, "pre_close": 282.33, "change": -4.59, "pct_chg": -1.6258, "vol": 229053.52, "amount": 6300761.896}, {"ts_code": "603986.SH", "trade_date": "20260206", "open": 271.0, "high": 280.51, "low": 268.2, "close": 276.17, "pre_close": 277.74, "change": -1.57, "pct_chg": -0.5653, "vol": 186267.14, "amount": 5136089.771}, {"ts_code": "603986.SH", "trade_date": "20260209", "open": 283.97, "high": 294.44, "low": 280.2, "close": 292.98, "pre_close": 276.17, "change": 16.81, "pct_chg": 6.0868, "vol": 283055.21, "amount": 8148122.681}, {"ts_code": "603986.SH", "trade_date": "20260210", "open": 287.13, "high": 291.5, "low": 284.17, "close": 289.9, "pre_close": 292.98, "change": -3.08, "pct_chg": -1.0513, "vol": 215965.54, "amount": 6225459.477}, {"ts_code": "603986.SH", "trade_date": "20260211", "open": 285.0, "high": 286.5, "low": 280.5, "close": 284.59, "pre_close": 289.9, "change": -5.31, "pct_chg": -1.8317, "vol": 173415.5, "amount": 4922177.744}, {"ts_code": "603986.SH", "trade_date": "20260212", "open": 290.5, "high": 305.0, "low": 285.0, "close": 303.24, "pre_close": 284.59, "change": 18.65, "pct_chg": 6.5533, "vol": 300674.34, "amount": 8842653.413}, {"ts_code": "603986.SH", "trade_date": "20260213", "open": 303.24, "high": 317.6, "low": 301.0, "close": 308.7, "pre_close": 303.24, "change": 5.46, "pct_chg": 1.8006, "vol": 299253.71, "amount": 9335277.999}, {"ts_code": "603986.SH", "trade_date": "20260224", "open": 317.5, "high": 331.16, "low": 311.0, "close": 323.05, "pre_close": 308.7, "change": 14.35, "pct_chg": 4.6485, "vol": 302545.4, "amount": 9709224.737}, {"ts_code": "603986.SH", "trade_date": "20260225", "open": 316.0, "high": 317.01, "low": 301.96, "close": 311.32, "pre_close": 323.05, "change": -11.73, "pct_chg": -3.631, "vol": 285728.01, "amount": 8846026.25}, {"ts_code": "603986.SH", "trade_date": "20260226", "open": 316.0, "high": 316.0, "low": 306.05, "close": 309.4, "pre_close": 311.32, "change": -1.92, "pct_chg": -0.6167, "vol": 231052.85, "amount": 7169784.208}, {"ts_code": "603986.SH", "trade_date": "20260227", "open": 303.5, "high": 306.0, "low": 296.69, "close": 300.0, "pre_close": 309.4, "change": -9.4, "pct_chg": -3.0381, "vol": 220968.92, "amount": 6629753.921}, {"ts_code": "603986.SH", "trade_date": "20260302", "open": 290.87, "high": 299.98, "low": 290.55, "close": 293.15, "pre_close": 300.0, "change": -6.85, "pct_chg": -2.2833, "vol": 185132.28, "amount": 5453801.345}, {"ts_code": "603986.SH", "trade_date": "20260303", "open": 295.0, "high": 296.1, "low": 272.59, "close": 272.89, "pre_close": 293.15, "change": -20.26, "pct_chg": -6.9111, "vol": 333293.65, "amount": 9356849.949}, {"ts_code": "603986.SH", "trade_date": "20260304", "open": 272.89, "high": 290.0, "low": 272.89, "close": 279.07, "pre_close": 272.89, "change": 6.18, "pct_chg": 2.2646, "vol": 326916.32, "amount": 9250036.179}, {"ts_code": "603986.SH", "trade_date": "20260305", "open": 288.16, "high": 289.88, "low": 280.23, "close": 282.8, "pre_close": 279.07, "change": 3.73, "pct_chg": 1.3366, "vol": 255299.73, "amount": 7288806.325}, {"ts_code": "603986.SH", "trade_date": "20260306", "open": 277.9, "high": 288.88, "low": 277.56, "close": 284.99, "pre_close": 282.8, "change": 2.19, "pct_chg": 0.7744, "vol": 208575.77, "amount": 5931718.814}, {"ts_code": "603986.SH", "trade_date": "20260309", "open": 273.0, "high": 277.7, "low": 264.0, "close": 276.09, "pre_close": 284.99, "change": -8.9, "pct_chg": -3.1229, "vol": 283545.65, "amount": 7649552.153}, {"ts_code": "603986.SH", "trade_date": "20260310", "open": 284.1, "high": 286.5, "low": 281.18, "close": 285.44, "pre_close": 276.09, "change": 9.35, "pct_chg": 3.3866, "vol": 233537.42, "amount": 6640032.786}, {"ts_code": "603986.SH", "trade_date": "20260311", "open": 288.04, "high": 290.83, "low": 281.32, "close": 281.53, "pre_close": 285.44, "change": -3.91, "pct_chg": -1.3698, "vol": 216498.69, "amount": 6176121.565}, {"ts_code": "603986.SH", "trade_date": "20260312", "open": 279.83, "high": 283.83, "low": 272.43, "close": 274.78, "pre_close": 281.53, "change": -6.75, "pct_chg": -2.3976, "vol": 172327.47, "amount": 4768478.191}, {"ts_code": "603986.SH", "trade_date": "20260313", "open": 270.78, "high": 285.67, "low": 270.78, "close": 278.33, "pre_close": 274.78, "change": 3.55, "pct_chg": 1.2919, "vol": 226137.49, "amount": 6301123.525}, {"ts_code": "603986.SH", "trade_date": "20260316", "open": 280.0, "high": 306.16, "low": 277.0, "close": 306.16, "pre_close": 278.33, "change": 27.83, "pct_chg": 9.9989, "vol": 462735.64, "amount": 13600507.644}, {"ts_code": "603986.SH", "trade_date": "20260317", "open": 306.5, "high": 313.0, "low": 295.88, "close": 296.0, "pre_close": 306.16, "change": -10.16, "pct_chg": -3.3185, "vol": 390000.85, "amount": 11825489.341}, {"ts_code": "603986.SH", "trade_date": "20260318", "open": 305.1, "high": 313.68, "low": 302.0, "close": 311.25, "pre_close": 296.0, "change": 15.25, "pct_chg": 5.152, "vol": 420513.52, "amount": 12995566.647}, {"ts_code": "603986.SH", "trade_date": "20260319", "open": 300.0, "high": 309.71, "low": 297.0, "close": 303.68, "pre_close": 311.25, "change": -7.57, "pct_chg": -2.4321, "vol": 312145.67, "amount": 9443689.781}, {"ts_code": "603986.SH", "trade_date": "20260320", "open": 305.55, "high": 306.7, "low": 290.0, "close": 290.2, "pre_close": 303.68, "change": -13.48, "pct_chg": -4.4389, "vol": 312536.44, "amount": 9259119.964}, {"ts_code": "603986.SH", "trade_date": "20260323", "open": 277.0, "high": 282.88, "low": 271.0, "close": 273.35, "pre_close": 290.2, "change": -16.85, "pct_chg": -5.8063, "vol": 282141.91, "amount": 7806213.396}, {"ts_code": "603986.SH", "trade_date": "20260324", "open": 277.99, "high": 278.0, "low": 256.88, "close": 273.71, "pre_close": 273.35, "change": 0.36, "pct_chg": 0.1317, "vol": 336914.68, "amount": 8936300.507}, {"ts_code": "603986.SH", "trade_date": "20260325", "open": 275.15, "high": 285.8, "low": 275.14, "close": 278.4, "pre_close": 273.71, "change": 4.69, "pct_chg": 1.7135, "vol": 283762.75, "amount": 7947975.811}, {"ts_code": "603986.SH", "trade_date": "20260326", "open": 268.0, "high": 268.7, "low": 260.0, "close": 262.0, "pre_close": 278.4, "change": -16.4, "pct_chg": -5.8908, "vol": 350773.07, "amount": 9217935.594}, {"ts_code": "603986.SH", "trade_date": "20260327", "open": 248.98, "high": 260.18, "low": 240.25, "close": 258.66, "pre_close": 262.0, "change": -3.34, "pct_chg": -1.2748, "vol": 289773.43, "amount": 7291597.265}, {"ts_code": "603986.SH", "trade_date": "20260330", "open": 252.0, "high": 259.54, "low": 250.03, "close": 255.85, "pre_close": 258.66, "change": -2.81, "pct_chg": -1.0864, "vol": 214696.45, "amount": 5470168.275}, {"ts_code": "603986.SH", "trade_date": "20260331", "open": 249.9, "high": 252.0, "low": 236.86, "close": 238.1, "pre_close": 255.85, "change": -17.75, "pct_chg": -6.9377, "vol": 427623.34, "amount": 10377669.656}, {"ts_code": "603986.SH", "trade_date": "20260401", "open": 250.0, "high": 256.1, "low": 243.7, "close": 255.0, "pre_close": 238.1, "change": 16.9, "pct_chg": 7.0979, "vol": 387957.83, "amount": 9693139.251}, {"ts_code": "603986.SH", "trade_date": "20260402", "open": 257.86, "high": 259.8, "low": 245.6, "close": 246.99, "pre_close": 255.0, "change": -8.01, "pct_chg": -3.1412, "vol": 252974.31, "amount": 6367107.416}, {"ts_code": "603986.SH", "trade_date": "20260403", "open": 250.99, "high": 254.6, "low": 247.5, "close": 249.1, "pre_close": 246.99, "change": 2.11, "pct_chg": 0.8543, "vol": 197471.97, "amount": 4948392.995}, {"ts_code": "603986.SH", "trade_date": "20260407", "open": 253.1, "high": 255.96, "low": 248.81, "close": 249.66, "pre_close": 249.1, "change": 0.56, "pct_chg": 0.2248, "vol": 198471.58, "amount": 5011332.74}, {"ts_code": "603986.SH", "trade_date": "20260408", "open": 250.11, "high": 256.96, "low": 243.08, "close": 255.96, "pre_close": 249.66, "change": 6.3, "pct_chg": 2.5234, "vol": 753325.37, "amount": 18866761.51}, {"ts_code": "603986.SH", "trade_date": "20260409", "open": 250.0, "high": 253.49, "low": 243.9, "close": 250.49, "pre_close": 255.96, "change": -5.47, "pct_chg": -2.1371, "vol": 444682.57, "amount": 11053684.068}, {"ts_code": "603986.SH", "trade_date": "20260410", "open": 255.49, "high": 268.32, "low": 255.24, "close": 265.09, "pre_close": 250.49, "change": 14.6, "pct_chg": 5.8286, "vol": 534766.82, "amount": 14080294.764}, {"ts_code": "603986.SH", "trade_date": "20260413", "open": 261.0, "high": 269.84, "low": 260.9, "close": 262.14, "pre_close": 265.09, "change": -2.95, "pct_chg": -1.1128, "vol": 412420.92, "amount": 10896229.97}, {"ts_code": "603986.SH", "trade_date": "20260414", "open": 269.5, "high": 281.23, "low": 266.39, "close": 280.01, "pre_close": 262.14, "change": 17.87, "pct_chg": 6.817, "vol": 466205.21, "amount": 12861207.284}, {"ts_code": "603986.SH", "trade_date": "20260415", "open": 285.0, "high": 287.65, "low": 271.98, "close": 274.0, "pre_close": 280.01, "change": -6.01, "pct_chg": -2.1464, "vol": 396972.6, "amount": 11071707.52}, {"ts_code": "603986.SH", "trade_date": "20260416", "open": 270.1, "high": 287.0, "low": 268.59, "close": 286.73, "pre_close": 274.0, "change": 12.73, "pct_chg": 4.646, "vol": 409336.72, "amount": 11431621.262}, {"ts_code": "603986.SH", "trade_date": "20260417", "open": 284.0, "high": 295.66, "low": 282.9, "close": 288.96, "pre_close": 286.73, "change": 2.23, "pct_chg": 0.7777, "vol": 406321.12, "amount": 11768331.454}, {"ts_code": "603986.SH", "trade_date": "20260420", "open": 293.0, "high": 295.96, "low": 287.12, "close": 290.54, "pre_close": 288.96, "change": 1.58, "pct_chg": 0.5468, "vol": 325642.8, "amount": 9489709.816}, {"ts_code": "603986.SH", "trade_date": "20260421", "open": 290.8, "high": 309.0, "low": 288.25, "close": 306.27, "pre_close": 290.54, "change": 15.73, "pct_chg": 5.4141, "vol": 425834.06, "amount": 12827436.178}, {"ts_code": "603986.SH", "trade_date": "20260422", "open": 303.5, "high": 314.58, "low": 302.51, "close": 313.98, "pre_close": 306.27, "change": 7.71, "pct_chg": 2.5174, "vol": 341661.95, "amount": 10559646.646}, {"ts_code": "603986.SH", "trade_date": "20260423", "open": 326.01, "high": 326.02, "low": 301.9, "close": 304.8, "pre_close": 313.98, "change": -9.18, "pct_chg": -2.9238, "vol": 441997.3, "amount": 13709630.158}, {"ts_code": "603986.SH", "trade_date": "20260424", "open": 305.0, "high": 310.0, "low": 292.81, "close": 297.7, "pre_close": 304.8, "change": -7.1, "pct_chg": -2.3294, "vol": 349105.37, "amount": 10436275.525}, {"ts_code": "603986.SH", "trade_date": "20260427", "open": 301.59, "high": 309.58, "low": 297.75, "close": 303.42, "pre_close": 297.7, "change": 5.72, "pct_chg": 1.9214, "vol": 316354.78, "amount": 9594446.068}, {"ts_code": "603986.SH", "trade_date": "20260428", "open": 305.0, "high": 319.33, "low": 302.02, "close": 307.5, "pre_close": 303.42, "change": 4.08, "pct_chg": 1.3447, "vol": 367942.94, "amount": 11421765.607}, {"ts_code": "603986.SH", "trade_date": "20260429", "open": 303.01, "high": 311.66, "low": 297.0, "close": 308.89, "pre_close": 307.5, "change": 1.39, "pct_chg": 0.452, "vol": 419199.8, "amount": 12787874.125}, {"ts_code": "603986.SH", "trade_date": "20260430", "open": 320.0, "high": 321.0, "low": 306.48, "close": 312.99, "pre_close": 308.89, "change": 4.1, "pct_chg": 1.3273, "vol": 587965.14, "amount": 18516847.87}, {"ts_code": "603986.SH", "trade_date": "20260506", "open": 330.0, "high": 344.29, "low": 330.0, "close": 344.29, "pre_close": 312.99, "change": 31.3, "pct_chg": 10.0003, "vol": 423425.5, "amount": 14465204.492}, {"ts_code": "603986.SH", "trade_date": "20260507", "open": 347.0, "high": 357.36, "low": 339.0, "close": 350.16, "pre_close": 344.29, "change": 5.87, "pct_chg": 1.705, "vol": 523878.82, "amount": 18174549.786}, {"ts_code": "603986.SH", "trade_date": "20260508", "open": 341.0, "high": 343.3, "low": 331.8, "close": 334.1, "pre_close": 350.16, "change": -16.06, "pct_chg": -4.5865, "vol": 440832.73, "amount": 14821436.654}, {"ts_code": "603986.SH", "trade_date": "20260511", "open": 350.1, "high": 367.51, "low": 347.01, "close": 362.13, "pre_close": 334.1, "change": 28.03, "pct_chg": 8.3897, "vol": 575079.07, "amount": 20673848.905}, {"ts_code": "603986.SH", "trade_date": "20260512", "open": 362.14, "high": 362.2, "low": 349.2, "close": 353.55, "pre_close": 362.13, "change": -8.58, "pct_chg": -2.3693, "vol": 405595.51, "amount": 14360590.982}, {"ts_code": "603986.SH", "trade_date": "20260513", "open": 344.0, "high": 366.71, "low": 339.33, "close": 365.0, "pre_close": 353.55, "change": 11.45, "pct_chg": 3.2386, "vol": 484982.84, "amount": 17127399.574}, {"ts_code": "603986.SH", "trade_date": "20260514", "open": 365.05, "high": 373.5, "low": 354.99, "close": 356.19, "pre_close": 365.0, "change": -8.81, "pct_chg": -2.4137, "vol": 408364.64, "amount": 14829461.848}, {"ts_code": "603986.SH", "trade_date": "20260515", "open": 353.0, "high": 384.0, "low": 345.48, "close": 375.34, "pre_close": 356.19, "change": 19.15, "pct_chg": 5.3763, "vol": 624368.11, "amount": 22792196.753}, {"ts_code": "603986.SH", "trade_date": "20260518", "open": 408.58, "high": 412.87, "low": 396.34, "close": 400.0, "pre_close": 375.34, "change": 24.66, "pct_chg": 6.57, "vol": 687984.34, "amount": 27876373.984}, {"ts_code": "603986.SH", "trade_date": "20260519", "open": 390.0, "high": 410.0, "low": 380.02, "close": 404.56, "pre_close": 400.0, "change": 4.56, "pct_chg": 1.14, "vol": 553101.11, "amount": 21805396.34}, {"ts_code": "603986.SH", "trade_date": "20260520", "open": 408.0, "high": 445.02, "low": 407.8, "close": 445.02, "pre_close": 404.56, "change": 40.46, "pct_chg": 10.001, "vol": 610125.55, "amount": 26523529.101}, {"ts_code": "603986.SH", "trade_date": "20260521", "open": 445.02, "high": 464.83, "low": 427.33, "close": 431.9, "pre_close": 445.02, "change": -13.12, "pct_chg": -2.9482, "vol": 632397.68, "amount": 28199401.936}, {"ts_code": "603986.SH", "trade_date": "20260522", "open": 448.0, "high": 472.99, "low": 439.0, "close": 468.74, "pre_close": 431.9, "change": 36.84, "pct_chg": 8.5298, "vol": 637968.89, "amount": 28932072.443}, {"ts_code": "603986.SH", "trade_date": "20260525", "open": 478.11, "high": 515.61, "low": 461.0, "close": 515.6, "pre_close": 468.74, "change": 46.86, "pct_chg": 9.997, "vol": 593614.11, "amount": 29387713.836}, {"ts_code": "603986.SH", "trade_date": "20260526", "open": 510.0, "high": 538.02, "low": 491.2, "close": 526.22, "pre_close": 514.85, "change": 11.37, "pct_chg": 2.2084, "vol": 643383.92, "amount": 33017657.438}, {"ts_code": "603986.SH", "trade_date": "20260527", "open": 541.0, "high": 552.82, "low": 500.0, "close": 514.18, "pre_close": 526.22, "change": -12.04, "pct_chg": -2.288, "vol": 667260.41, "amount": 35341222.581}, {"ts_code": "603986.SH", "trade_date": "20260528", "open": 495.0, "high": 499.5, "low": 470.0, "close": 483.0, "pre_close": 514.18, "change": -31.18, "pct_chg": -6.064, "vol": 623792.2, "amount": 30240489.779}, {"ts_code": "603986.SH", "trade_date": "20260529", "open": 492.66, "high": 496.0, "low": 464.91, "close": 467.01, "pre_close": 483.0, "change": -15.99, "pct_chg": -3.3106, "vol": 558125.42, "amount": 26715074.211}, {"ts_code": "603986.SH", "trade_date": "20260601", "open": 476.0, "high": 489.96, "low": 455.0, "close": 468.0, "pre_close": 467.01, "change": 0.99, "pct_chg": 0.212, "vol": 521586.48, "amount": 24676174.086}, {"ts_code": "603986.SH", "trade_date": "20260602", "open": 471.0, "high": 480.66, "low": 448.11, "close": 474.69, "pre_close": 468.0, "change": 6.69, "pct_chg": 1.4295, "vol": 490192.77, "amount": 23013728.744}, {"ts_code": "603986.SH", "trade_date": "20260603", "open": 478.89, "high": 510.0, "low": 477.0, "close": 492.23, "pre_close": 474.69, "change": 17.54, "pct_chg": 3.695, "vol": 581929.78, "amount": 28838934.89}, {"ts_code": "603986.SH", "trade_date": "20260604", "open": 487.05, "high": 538.0, "low": 485.01, "close": 529.31, "pre_close": 492.23, "change": 37.08, "pct_chg": 7.5331, "vol": 563350.88, "amount": 29302244.793}, {"ts_code": "603986.SH", "trade_date": "20260605", "open": 507.0, "high": 519.8, "low": 484.9, "close": 488.0, "pre_close": 529.31, "change": -41.31, "pct_chg": -7.8045, "vol": 547135.42, "amount": 27565110.091}, {"ts_code": "603986.SH", "trade_date": "20260608", "open": 461.11, "high": 490.7, "low": 451.0, "close": 474.01, "pre_close": 488.0, "change": -13.99, "pct_chg": -2.8668, "vol": 434474.74, "amount": 20573934.017}, {"ts_code": "603986.SH", "trade_date": "20260609", "open": 493.0, "high": 502.88, "low": 477.03, "close": 500.5, "pre_close": 474.01, "change": 26.49, "pct_chg": 5.5885, "vol": 419683.33, "amount": 20592669.384}, {"ts_code": "603986.SH", "trade_date": "20260610", "open": 489.11, "high": 497.26, "low": 475.65, "close": 480.84, "pre_close": 500.5, "change": -19.66, "pct_chg": -3.9281, "vol": 329972.1, "amount": 15988381.63}, {"ts_code": "603986.SH", "trade_date": "20260611", "open": 480.52, "high": 486.0, "low": 471.0, "close": 483.5, "pre_close": 480.84, "change": 2.66, "pct_chg": 0.5532, "vol": 296991.43, "amount": 14211235.696}, {"ts_code": "603986.SH", "trade_date": "20260612", "open": 508.0, "high": 510.0, "low": 481.0, "close": 481.47, "pre_close": 483.5, "change": -2.03, "pct_chg": -0.4199, "vol": 407085.44, "amount": 20201561.53}, {"ts_code": "603986.SH", "trade_date": "20260615", "open": 494.97, "high": 519.0, "low": 476.66, "close": 518.0, "pre_close": 481.47, "change": 36.53, "pct_chg": 7.5872, "vol": 475784.48, "amount": 23934989.159}, {"ts_code": "603986.SH", "trade_date": "20260616", "open": 526.0, "high": 542.84, "low": 517.71, "close": 532.76, "pre_close": 518.0, "change": 14.76, "pct_chg": 2.8494, "vol": 427785.07, "amount": 22673887.613}, {"ts_code": "603986.SH", "trade_date": "20260617", "open": 521.0, "high": 586.04, "low": 521.0, "close": 586.04, "pre_close": 532.76, "change": 53.28, "pct_chg": 10.0008, "vol": 568000.3, "amount": 31598894.526}, {"ts_code": "603986.SH", "trade_date": "20260618", "open": 594.0, "high": 644.64, "low": 586.6, "close": 629.0, "pre_close": 586.04, "change": 42.96, "pct_chg": 7.3306, "vol": 591573.18, "amount": 37016387.91}, {"ts_code": "603986.SH", "trade_date": "20260622", "open": 643.0, "high": 689.7, "low": 635.0, "close": 689.7, "pre_close": 629.0, "change": 60.7, "pct_chg": 9.6502, "vol": 525830.95, "amount": 34699907.688}, {"ts_code": "603986.SH", "trade_date": "20260623", "open": 680.0, "high": 688.8, "low": 636.0, "close": 640.99, "pre_close": 689.7, "change": -48.71, "pct_chg": -7.0625, "vol": 592913.79, "amount": 39089605.51}, {"ts_code": "603986.SH", "trade_date": "20260624", "open": 641.0, "high": 705.09, "low": 630.93, "close": 705.09, "pre_close": 640.99, "change": 64.1, "pct_chg": 10.0002, "vol": 598219.31, "amount": 39944848.281}, {"ts_code": "603986.SH", "trade_date": "20260625", "open": 740.0, "high": 775.39, "low": 735.0, "close": 775.21, "pre_close": 705.09, "change": 70.12, "pct_chg": 9.9448, "vol": 508678.36, "amount": 38432771.374}, {"ts_code": "603986.SH", "trade_date": "20260626", "open": 753.0, "high": 779.0, "low": 732.52, "close": 770.0, "pre_close": 775.21, "change": -5.21, "pct_chg": -0.6721, "vol": 493925.62, "amount": 37418302.893}, {"ts_code": "603986.SH", "trade_date": "20260629", "open": 779.0, "high": 846.66, "low": 750.0, "close": 840.0, "pre_close": 770.0, "change": 70.0, "pct_chg": 9.0909, "vol": 541208.83, "amount": 43149934.642}, {"ts_code": "603986.SH", "trade_date": "20260630", "open": 810.0, "high": 833.0, "low": 781.11, "close": 815.0, "pre_close": 840.0, "change": -25.0, "pct_chg": -2.9762, "vol": 449646.79, "amount": 36399346.133}, {"ts_code": "603986.SH", "trade_date": "20260701", "open": 803.0, "high": 843.38, "low": 753.0, "close": 772.01, "pre_close": 815.0, "change": -42.99, "pct_chg": -5.2748, "vol": 539702.17, "amount": 43202850.798}, {"ts_code": "603986.SH", "trade_date": "20260702", "open": 721.0, "high": 731.99, "low": 694.81, "close": 694.81, "pre_close": 772.01, "change": -77.2, "pct_chg": -9.9999, "vol": 452436.41, "amount": 32120680.671}, {"ts_code": "603986.SH", "trade_date": "20260703", "open": 672.54, "high": 717.66, "low": 642.35, "close": 677.77, "pre_close": 694.81, "change": -17.04, "pct_chg": -2.4525, "vol": 623522.15, "amount": 42673730.269}];
+    const $ = id => document.getElementById(id);
+    const n = v => Number(v);
+    const fmtDate = s => `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6)}`;
+    const fmtPct = v => Number.isFinite(v) ? `${(v * 100).toFixed(2)}%` : '--';
+    const fmtNum = (v, d = 2) => Number.isFinite(v) ? v.toFixed(d) : '--';
+    const fmtInt = v => Number.isFinite(v) ? Math.round(v).toLocaleString() : '--';
+    const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const upColor = css('--up');
+    const downColor = css('--down');
+    const accentColor = css('--accent');
+    const gridColor = css('--grid');
+    const mutedColor = css('--muted');
 
-    function n(v) { return Number(v); }
-    function fmtDate(s) { return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6)}`; }
-    function resize() {
-      const dpr = window.devicePixelRatio || 1;
-      const rect = canvas.getBoundingClientRect();
-      canvas.width = Math.floor(rect.width * dpr);
-      canvas.height = Math.floor(rect.height * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      draw();
+    function sma(values, period) {
+      const out = Array(values.length).fill(null);
+      let sum = 0;
+      for (let i = 0; i < values.length; i++) {
+        sum += values[i];
+        if (i >= period) sum -= values[i - period];
+        if (i >= period - 1) out[i] = sum / period;
+      }
+      return out;
     }
 
-    function draw(hoverIndex = -1) {
-      const w = canvas.clientWidth;
-      const h = canvas.clientHeight;
-      ctx.clearRect(0, 0, w, h);
-      const pad = { left: 62, right: 18, top: 18, bottom: 42 };
-      const priceH = Math.round((h - pad.top - pad.bottom) * 0.68);
-      const gap = 24;
-      const volTop = pad.top + priceH + gap;
-      const volH = h - volTop - pad.bottom;
-      const plotW = w - pad.left - pad.right;
-      const highs = records.map(r => n(r.high));
-      const lows = records.map(r => n(r.low));
-      const vols = records.map(r => n(r.vol));
-      const minP = Math.min(...lows);
-      const maxP = Math.max(...highs);
-      const pRange = maxP - minP || 1;
-      const maxVol = Math.max(...vols) || 1;
-      const xStep = plotW / records.length;
-      const candleW = Math.max(2, Math.min(10, xStep * 0.62));
-      const yPrice = p => pad.top + (maxP - p) / pRange * priceH;
-      const yVol = v => volTop + volH - v / maxVol * volH;
+    function ema(values, period) {
+      const out = Array(values.length).fill(null);
+      const k = 2 / (period + 1);
+      let prev = null;
+      values.forEach((value, i) => {
+        prev = prev === null ? value : value * k + prev * (1 - k);
+        out[i] = prev;
+      });
+      return out;
+    }
 
-      ctx.strokeStyle = '#e4e7ec';
-      ctx.lineWidth = 1;
+    function std(values, end, period) {
+      if (end < period - 1) return null;
+      const slice = values.slice(end - period + 1, end + 1);
+      const avg = slice.reduce((a, b) => a + b, 0) / period;
+      const variance = slice.reduce((a, b) => a + (b - avg) ** 2, 0) / period;
+      return Math.sqrt(variance);
+    }
+
+    function rsi(values, period) {
+      const out = Array(values.length).fill(null);
+      for (let i = period; i < values.length; i++) {
+        let gain = 0, loss = 0;
+        for (let j = i - period + 1; j <= i; j++) {
+          const diff = values[j] - values[j - 1];
+          if (diff >= 0) gain += diff; else loss -= diff;
+        }
+        out[i] = loss === 0 ? 100 : 100 - 100 / (1 + gain / loss);
+      }
+      return out;
+    }
+
+    function kdj(highs, lows, closes, period = 9) {
+      const k = Array(closes.length).fill(null);
+      const d = Array(closes.length).fill(null);
+      const j = Array(closes.length).fill(null);
+      let prevK = 50, prevD = 50;
+      for (let i = 0; i < closes.length; i++) {
+        if (i < period - 1) continue;
+        const h = Math.max(...highs.slice(i - period + 1, i + 1));
+        const l = Math.min(...lows.slice(i - period + 1, i + 1));
+        const rsv = h === l ? 50 : (closes[i] - l) / (h - l) * 100;
+        prevK = prevK * 2 / 3 + rsv / 3;
+        prevD = prevD * 2 / 3 + prevK / 3;
+        k[i] = prevK;
+        d[i] = prevD;
+        j[i] = 3 * prevK - 2 * prevD;
+      }
+      return { k, d, j };
+    }
+
+    function maxDrawdown(series) {
+      let peak = series[0] || 1;
+      let maxDd = 0;
+      series.forEach(v => {
+        if (v > peak) peak = v;
+        maxDd = Math.min(maxDd, v / peak - 1);
+      });
+      return maxDd;
+    }
+
+    function streaks(returns) {
+      let up = 0, down = 0, maxUp = 0, maxDown = 0;
+      returns.forEach(v => {
+        if (v > 0) { up += 1; down = 0; }
+        else if (v < 0) { down += 1; up = 0; }
+        else { up = 0; down = 0; }
+        maxUp = Math.max(maxUp, up);
+        maxDown = Math.max(maxDown, down);
+      });
+      return { maxUp, maxDown };
+    }
+
+    function backtest(closes, maFast, maSlow) {
+      const equity = Array(closes.length).fill(1);
+      const trades = [];
+      let position = 0;
+      let entry = null;
+      for (let i = 1; i < closes.length; i++) {
+        const crossUp = maFast[i - 1] !== null && maSlow[i - 1] !== null && maFast[i - 1] <= maSlow[i - 1] && maFast[i] > maSlow[i];
+        const crossDown = maFast[i - 1] !== null && maSlow[i - 1] !== null && maFast[i - 1] >= maSlow[i - 1] && maFast[i] < maSlow[i];
+        if (!position && crossUp) {
+          position = 1;
+          entry = { date: records[i].trade_date, price: closes[i] };
+        } else if (position && crossDown) {
+          trades.push({ entry, exit: { date: records[i].trade_date, price: closes[i] }, ret: closes[i] / entry.price - 1 });
+          position = 0;
+          entry = null;
+        }
+        equity[i] = equity[i - 1] * (position ? closes[i] / closes[i - 1] : 1);
+      }
+      if (position && entry) {
+        trades.push({ entry, exit: { date: records.at(-1).trade_date, price: closes.at(-1) }, ret: closes.at(-1) / entry.price - 1, open: true });
+      }
+      const closed = trades.filter(t => !t.open);
+      const wins = closed.filter(t => t.ret > 0);
+      const losses = closed.filter(t => t.ret <= 0);
+      const avgWin = wins.length ? wins.reduce((s, t) => s + t.ret, 0) / wins.length : 0;
+      const avgLoss = losses.length ? Math.abs(losses.reduce((s, t) => s + t.ret, 0) / losses.length) : 0;
+      return {
+        equity,
+        trades,
+        totalReturn: equity.at(-1) - 1,
+        maxDd: maxDrawdown(equity),
+        winRate: closed.length ? wins.length / closed.length : 0,
+        payoff: avgLoss ? avgWin / avgLoss : null,
+      };
+    }
+
+    const closes = records.map(r => n(r.close));
+    const opens = records.map(r => n(r.open));
+    const highs = records.map(r => n(r.high));
+    const lows = records.map(r => n(r.low));
+    const vols = records.map(r => n(r.vol));
+    const returns = closes.map((c, i) => i ? c / closes[i - 1] - 1 : 0);
+    const ma5 = sma(closes, 5);
+    const ma10 = sma(closes, 10);
+    const ma20 = sma(closes, 20);
+    const ma60 = sma(closes, 60);
+    const volMa5 = sma(vols, 5);
+    const volMa20 = sma(vols, 20);
+    const ema12 = ema(closes, 12);
+    const ema26 = ema(closes, 26);
+    const dif = closes.map((_, i) => ema12[i] - ema26[i]);
+    const dea = ema(dif, 9);
+    const macd = dif.map((v, i) => (v - dea[i]) * 2);
+    const rsi6 = rsi(closes, 6);
+    const rsi14 = rsi(closes, 14);
+    const kd = kdj(highs, lows, closes);
+    const bollMid = ma20;
+    const bollStd = closes.map((_, i) => std(closes, i, 20));
+    const bollUp = bollMid.map((v, i) => v === null || bollStd[i] === null ? null : v + 2 * bollStd[i]);
+    const bollDown = bollMid.map((v, i) => v === null || bollStd[i] === null ? null : v - 2 * bollStd[i]);
+    const buyHold = closes.map(c => c / closes[0]);
+    const test = backtest(closes, ma5, ma20);
+    const latest = records.length - 1;
+    const last = records[latest];
+    const latestClose = closes[latest];
+    const totalReturn = latestClose / closes[0] - 1;
+    const avgRet = returns.slice(1).reduce((a, b) => a + b, 0) / Math.max(1, returns.length - 1);
+    const stdRet = Math.sqrt(returns.slice(1).reduce((a, b) => a + (b - avgRet) ** 2, 0) / Math.max(1, returns.length - 2));
+    const annualVol = stdRet * Math.sqrt(252);
+    const sharpe = annualVol ? avgRet * 252 / annualVol : null;
+    const maxDd = maxDrawdown(buyHold);
+    const volumeRatio = volMa20[latest] ? vols[latest] / volMa20[latest] : null;
+    const atr14 = sma(records.map((r, i) => {
+      if (!i) return highs[i] - lows[i];
+      return Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1]));
+    }), 14);
+    const streak = streaks(returns);
+
+    function periodReturn(days) {
+      if (records.length <= days) return null;
+      return latestClose / closes[records.length - 1 - days] - 1;
+    }
+
+    function windowHigh(days) { return Math.max(...highs.slice(Math.max(0, records.length - days))); }
+    function windowLow(days) { return Math.min(...lows.slice(Math.max(0, records.length - days))); }
+
+    function classify() {
+      const trend = ma20[latest] > ma60[latest] && latestClose > ma20[latest] ? ['多头趋势', 'up'] :
+        ma20[latest] < ma60[latest] && latestClose < ma20[latest] ? ['空头趋势', 'down'] : ['震荡整理', 'warn'];
+      const momentum = rsi14[latest] >= 70 ? ['动量过热', 'warn'] : rsi14[latest] >= 55 ? ['动量偏强', 'up'] :
+        rsi14[latest] <= 30 ? ['超卖修复区', 'warn'] : rsi14[latest] <= 45 ? ['动量偏弱', 'down'] : ['动量中性', ''];
+      const risk = annualVol >= 0.55 ? ['高波动', 'warn'] : annualVol <= 0.25 ? ['低波动', 'up'] : ['正常波动', ''];
+      const volPrice = returns[latest] > 0 && volumeRatio > 1.2 ? ['价涨量增', 'up'] :
+        returns[latest] < 0 && volumeRatio > 1.2 ? ['价跌量增', 'warn'] :
+        volumeRatio > 1.5 ? ['显著放量', 'warn'] : ['量能正常', ''];
+      const action = trend[1] === 'up' && momentum[1] !== 'warn' ? ['买入候选', 'up'] :
+        trend[1] === 'down' || risk[1] === 'warn' ? ['风险偏高', 'warn'] : ['观察等待', ''];
+      return { trend, momentum, risk, volPrice, action };
+    }
+
+    function renderStats() {
+      const items = [
+        ['最新收盘价', fmtNum(latestClose), `最新交易日 ${fmtDate(last.trade_date)}`],
+        ['近一年收益', fmtPct(totalReturn), `5/20/60日：${fmtPct(periodReturn(5))} / ${fmtPct(periodReturn(20))} / ${fmtPct(periodReturn(60))}`],
+        ['最大回撤', fmtPct(maxDd), `买入持有口径`],
+        ['年化波动率', fmtPct(annualVol), `夏普比率 ${fmtNum(sharpe, 2)}`],
+        ['成交量', `${fmtInt(vols[latest])} 手`, `20日均量 ${fmtInt(volMa20[latest])}，放量倍数 ${fmtNum(volumeRatio, 2)}x`],
+        ['ATR(14)', fmtNum(atr14[latest]), `参考止损：${fmtNum(latestClose - 2 * atr14[latest])}`],
+      ];
+      $('summaryStats').innerHTML = items.map(([label, value, note]) => `
+        <section class="stat"><div class="label">${label}</div><div class="value">${value}</div><div class="small">${note}</div></section>
+      `).join('');
+      $('dataStatus').textContent = `最新交易日：${fmtDate(last.trade_date)}，共 ${records.length} 个交易日`;
+    }
+
+    function renderSignals() {
+      const c = classify();
+      const rows = [
+        ['趋势状态', c.trend],
+        ['动量状态', c.momentum],
+        ['风险状态', c.risk],
+        ['量价关系', c.volPrice],
+        ['综合信号', c.action],
+        ['均线位置', [`MA5 ${fmtNum(ma5[latest])} / MA20 ${fmtNum(ma20[latest])} / MA60 ${fmtNum(ma60[latest])}`, '']],
+      ];
+      $('signals').innerHTML = rows.map(([label, [text, cls]]) => `
+        <div class="signal-row"><span>${label}</span><span class="badge ${cls}">${text}</span></div>
+      `).join('');
+    }
+
+    function renderTables() {
+      const levels = [
+        ['20日高点', windowHigh(20), '20日低点', windowLow(20)],
+        ['60日高点', windowHigh(60), '60日低点', windowLow(60)],
+        ['120日高点', windowHigh(120), '120日低点', windowLow(120)],
+        ['布林上轨', bollUp[latest], '布林下轨', bollDown[latest]],
+        ['距离20日高点', latestClose / windowHigh(20) - 1, '距离20日低点', latestClose / windowLow(20) - 1, true],
+      ];
+      $('levelsTable').innerHTML = '<tr><th>指标</th><th>值</th><th>指标</th><th>值</th></tr>' + levels.map(r => `
+        <tr><td>${r[0]}</td><td>${r[4] ? fmtPct(r[1]) : fmtNum(r[1])}</td><td>${r[2]}</td><td>${r[4] ? fmtPct(r[3]) : fmtNum(r[3])}</td></tr>
+      `).join('');
+
+      const closedTrades = test.trades.filter(t => !t.open).length;
+      const rows = [
+        ['策略收益', fmtPct(test.totalReturn)],
+        ['买入持有', fmtPct(totalReturn)],
+        ['策略最大回撤', fmtPct(test.maxDd)],
+        ['交易次数', `${closedTrades}`],
+        ['胜率', fmtPct(test.winRate)],
+        ['盈亏比', test.payoff === null ? '--' : fmtNum(test.payoff, 2)],
+      ];
+      $('backtestTable').innerHTML = '<tr><th>指标</th><th>值</th></tr>' + rows.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td></tr>`).join('');
+    }
+
+    function prepCanvas(canvas) {
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(rect.width * dpr));
+      canvas.height = Math.max(1, Math.floor(rect.height * dpr));
+      const ctx = canvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
       ctx.font = '12px "Microsoft YaHei", Arial';
-      ctx.fillStyle = '#667085';
-      for (let i = 0; i <= 5; i++) {
-        const y = pad.top + priceH * i / 5;
-        const price = maxP - pRange * i / 5;
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y);
-        ctx.lineTo(w - pad.right, y);
-        ctx.stroke();
-        ctx.fillText(price.toFixed(2), 8, y + 4);
-      }
-      for (let i = 0; i <= 3; i++) {
-        const y = volTop + volH * i / 3;
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y);
-        ctx.lineTo(w - pad.right, y);
-        ctx.stroke();
-      }
+      return { ctx, w: rect.width, h: rect.height };
+    }
 
+    function axis(ctx, area, min, max, ticks = 4) {
+      ctx.strokeStyle = gridColor;
+      ctx.fillStyle = mutedColor;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= ticks; i++) {
+        const y = area.top + area.h * i / ticks;
+        const value = max - (max - min) * i / ticks;
+        ctx.beginPath();
+        ctx.moveTo(area.left, y);
+        ctx.lineTo(area.left + area.w, y);
+        ctx.stroke();
+        ctx.fillText(fmtNum(value), 8, y + 4);
+      }
+    }
+
+    function drawLine(ctx, values, area, min, max, color, width = 1.5) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      let started = false;
+      values.forEach((v, i) => {
+        if (v === null || !Number.isFinite(v)) return;
+        const x = area.left + area.w * i / Math.max(1, values.length - 1);
+        const y = area.top + (max - v) / (max - min || 1) * area.h;
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function drawPrice(hoverIndex = -1) {
+      const canvas = $('priceChart');
+      const { ctx, w, h } = prepCanvas(canvas);
+      const pad = { left: 62, right: 18, top: 18, bottom: 34 };
+      const priceH = Math.round((h - pad.top - pad.bottom) * 0.66);
+      const volTop = pad.top + priceH + 24;
+      const volH = h - volTop - pad.bottom;
+      const priceVals = [...highs, ...lows, ...ma5.filter(Boolean), ...ma20.filter(Boolean), ...ma60.filter(Boolean), ...bollUp.filter(Boolean), ...bollDown.filter(Boolean)];
+      const minP = Math.min(...priceVals);
+      const maxP = Math.max(...priceVals);
+      const maxVol = Math.max(...vols, ...volMa20.filter(Boolean));
+      const xStep = (w - pad.left - pad.right) / records.length;
+      const candleW = Math.max(2, Math.min(10, xStep * 0.62));
+      const yPrice = p => pad.top + (maxP - p) / (maxP - minP || 1) * priceH;
+      const yVol = v => volTop + volH - v / (maxVol || 1) * volH;
+      const area = { left: pad.left, top: pad.top, w: w - pad.left - pad.right, h: priceH };
+      axis(ctx, area, minP, maxP, 5);
       records.forEach((r, i) => {
         const x = pad.left + i * xStep + xStep / 2;
-        const open = n(r.open), close = n(r.close), high = n(r.high), low = n(r.low);
+        const open = opens[i], close = closes[i], high = highs[i], low = lows[i];
         const up = close >= open;
-        const color = up ? '#d92d20' : '#039855';
+        const color = up ? upColor : downColor;
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
         ctx.beginPath();
@@ -208,27 +577,28 @@
         const y1 = yPrice(Math.max(open, close));
         const y2 = yPrice(Math.min(open, close));
         const bodyH = Math.max(1, y2 - y1);
-        if (up) {
-          ctx.strokeRect(x - candleW / 2, y1, candleW, bodyH);
-        } else {
-          ctx.fillRect(x - candleW / 2, y1, candleW, bodyH);
-        }
-        ctx.globalAlpha = 0.62;
-        ctx.fillRect(x - candleW / 2, yVol(n(r.vol)), candleW, volTop + volH - yVol(n(r.vol)));
+        if (up) ctx.strokeRect(x - candleW / 2, y1, candleW, bodyH);
+        else ctx.fillRect(x - candleW / 2, y1, candleW, bodyH);
+        ctx.globalAlpha = 0.55;
+        ctx.fillRect(x - candleW / 2, yVol(vols[i]), candleW, volTop + volH - yVol(vols[i]));
         ctx.globalAlpha = 1;
       });
-
-      ctx.fillStyle = '#667085';
-      const ticks = [0, Math.floor(records.length / 4), Math.floor(records.length / 2), Math.floor(records.length * 3 / 4), records.length - 1];
-      ticks.forEach(i => {
+      drawLine(ctx, bollUp, area, minP, maxP, '#98a2b3', 1);
+      drawLine(ctx, bollMid, area, minP, maxP, '#98a2b3', 1);
+      drawLine(ctx, bollDown, area, minP, maxP, '#98a2b3', 1);
+      drawLine(ctx, ma5, area, minP, maxP, '#f59e0b', 1.6);
+      drawLine(ctx, ma20, area, minP, maxP, '#2563eb', 1.6);
+      drawLine(ctx, ma60, area, minP, maxP, '#7c3aed', 1.6);
+      drawLine(ctx, volMa20, { left: pad.left, top: volTop, w: area.w, h: volH }, 0, maxVol, '#475467', 1.4);
+      ctx.fillStyle = mutedColor;
+      [0, Math.floor(records.length / 4), Math.floor(records.length / 2), Math.floor(records.length * 3 / 4), records.length - 1].forEach(i => {
         const x = pad.left + i * xStep + xStep / 2;
-        ctx.fillText(fmtDate(records[i].trade_date), Math.min(x - 34, w - 86), h - 14);
+        ctx.fillText(fmtDate(records[i].trade_date), Math.min(x - 34, w - 88), h - 12);
       });
       ctx.fillText('成交量', 8, volTop + 14);
-
-      if (hoverIndex >= 0 && records[hoverIndex]) {
+      if (hoverIndex >= 0) {
         const x = pad.left + hoverIndex * xStep + xStep / 2;
-        ctx.strokeStyle = '#2563eb';
+        ctx.strokeStyle = accentColor;
         ctx.beginPath();
         ctx.moveTo(x, pad.top);
         ctx.lineTo(x, h - pad.bottom);
@@ -236,23 +606,102 @@
       }
     }
 
-    canvas.addEventListener('mousemove', event => {
-      const rect = canvas.getBoundingClientRect();
-      const w = canvas.clientWidth;
-      const padLeft = 62, padRight = 18;
-      const plotW = w - padLeft - padRight;
-      const xStep = plotW / records.length;
-      const idx = Math.max(0, Math.min(records.length - 1, Math.floor((event.clientX - rect.left - padLeft) / xStep)));
+    function drawMacd() {
+      const { ctx, w, h } = prepCanvas($('macdChart'));
+      const area = { left: 48, top: 16, w: w - 62, h: h - 42 };
+      const vals = [...dif, ...dea, ...macd].filter(Number.isFinite);
+      const min = Math.min(...vals), max = Math.max(...vals);
+      axis(ctx, area, min, max, 4);
+      const zeroY = area.top + (max - 0) / (max - min || 1) * area.h;
+      const step = area.w / records.length;
+      macd.forEach((v, i) => {
+        const x = area.left + i * step + step / 2;
+        const y = area.top + (max - v) / (max - min || 1) * area.h;
+        ctx.fillStyle = v >= 0 ? upColor : downColor;
+        ctx.fillRect(x - Math.max(1, step * 0.35), Math.min(y, zeroY), Math.max(1, step * 0.7), Math.abs(zeroY - y));
+      });
+      drawLine(ctx, dif, area, min, max, '#2563eb', 1.5);
+      drawLine(ctx, dea, area, min, max, '#f59e0b', 1.5);
+    }
+
+    function drawOsc() {
+      const { ctx, w, h } = prepCanvas($('oscChart'));
+      const area = { left: 48, top: 16, w: w - 62, h: h - 42 };
+      axis(ctx, area, 0, 100, 4);
+      [30, 70].forEach(v => {
+        const y = area.top + (100 - v) / 100 * area.h;
+        ctx.strokeStyle = '#fdb022';
+        ctx.beginPath();
+        ctx.moveTo(area.left, y);
+        ctx.lineTo(area.left + area.w, y);
+        ctx.stroke();
+      });
+      drawLine(ctx, rsi6, area, 0, 100, '#2563eb', 1.5);
+      drawLine(ctx, rsi14, area, 0, 100, '#7c3aed', 1.5);
+      drawLine(ctx, kd.k, area, 0, 100, '#f59e0b', 1.2);
+      drawLine(ctx, kd.d, area, 0, 100, '#039855', 1.2);
+    }
+
+    function drawEquity() {
+      const { ctx, w, h } = prepCanvas($('equityChart'));
+      const area = { left: 48, top: 16, w: w - 62, h: h - 42 };
+      const vals = [...buyHold, ...test.equity];
+      const min = Math.min(...vals), max = Math.max(...vals);
+      axis(ctx, area, min, max, 4);
+      drawLine(ctx, buyHold, area, min, max, '#98a2b3', 1.5);
+      drawLine(ctx, test.equity, area, min, max, '#2563eb', 2);
+    }
+
+    function drawReturns() {
+      const { ctx, w, h } = prepCanvas($('returnChart'));
+      const area = { left: 42, top: 16, w: w - 56, h: h - 42 };
+      const data = returns.slice(1);
+      const min = Math.min(...data), max = Math.max(...data);
+      const bins = 18;
+      const counts = Array(bins).fill(0);
+      data.forEach(v => {
+        const idx = Math.max(0, Math.min(bins - 1, Math.floor((v - min) / (max - min || 1) * bins)));
+        counts[idx] += 1;
+      });
+      const maxCount = Math.max(...counts);
+      axis(ctx, area, 0, maxCount, 4);
+      const barW = area.w / bins;
+      counts.forEach((c, i) => {
+        const x = area.left + i * barW;
+        const y = area.top + area.h - c / maxCount * area.h;
+        const mid = min + (i + 0.5) / bins * (max - min);
+        ctx.fillStyle = mid >= 0 ? upColor : downColor;
+        ctx.fillRect(x + 2, y, Math.max(2, barW - 4), area.top + area.h - y);
+      });
+      ctx.fillStyle = mutedColor;
+      ctx.fillText(`最大单日涨幅 ${fmtPct(Math.max(...data))}`, area.left, h - 12);
+      ctx.fillText(`最大单日跌幅 ${fmtPct(Math.min(...data))}`, Math.max(area.left, w - 170), h - 12);
+    }
+
+    function renderAll() {
+      renderStats();
+      renderSignals();
+      renderTables();
+      drawPrice();
+      drawMacd();
+      drawOsc();
+      drawEquity();
+      drawReturns();
+    }
+
+    $('priceChart').addEventListener('mousemove', event => {
+      const rect = $('priceChart').getBoundingClientRect();
+      const idx = Math.max(0, Math.min(records.length - 1, Math.floor((event.clientX - rect.left - 62) / ((rect.width - 80) / records.length))));
       const r = records[idx];
-      info.textContent = `${fmtDate(r.trade_date)}  开 ${n(r.open).toFixed(2)}  高 ${n(r.high).toFixed(2)}  低 ${n(r.low).toFixed(2)}  收 ${n(r.close).toFixed(2)}  量 ${n(r.vol).toLocaleString()}手`;
-      draw(idx);
+      $('hoverInfo').textContent = `${fmtDate(r.trade_date)} 开 ${fmtNum(n(r.open))} 高 ${fmtNum(n(r.high))} 低 ${fmtNum(n(r.low))} 收 ${fmtNum(n(r.close))} 量 ${fmtInt(n(r.vol))}手 MA20 ${fmtNum(ma20[idx])} RSI14 ${fmtNum(rsi14[idx])}`;
+      drawPrice(idx);
     });
-    canvas.addEventListener('mouseleave', () => {
-      info.textContent = '悬停查看单日 OHLC 与成交量';
-      draw();
+    $('priceChart').addEventListener('mouseleave', () => {
+      $('hoverInfo').textContent = '悬停查看单日 OHLC、成交量和指标';
+      drawPrice();
     });
-    window.addEventListener('resize', resize);
-    resize();
+    window.addEventListener('resize', renderAll);
+    renderAll();
   </script>
 </body>
 </html>
