@@ -27,6 +27,42 @@ data/stocks/603986_SH_daily_none.csv
 
 其中 `qfq` 是默认口径，适合双均线、RSI、MACD、布林带等技术指标和普通策略回测。
 
+## 网页端实时获取 Tushare 数据
+
+网页工具地址：
+
+```text
+https://muyan9074.github.io/quant/dual_ma_tool.html
+```
+
+网页端支持三种数据来源：
+
+- `Cloudflare Worker 实时获取`：输入股票代码和 Worker 地址，页面实时请求 Tushare 代理，不保存本地 CSV。
+- `内置前复权 CSV`：使用仓库内置的 `603986.SH` 前复权数据。
+- `上传 CSV`：手动上传一支或多支股票的 CSV。
+
+使用实时模式前，需要先部署 Worker：
+
+```powershell
+cd workers
+npx wrangler secret put TUSHARE_TOKEN
+npx wrangler deploy
+```
+
+部署完成后，把 Wrangler 输出的 Worker 地址填到网页的 `Cloudflare Worker 地址` 输入框，例如：
+
+```text
+https://tushare-proxy.<your-subdomain>.workers.dev
+```
+
+然后选择 `Cloudflare Worker 实时获取`，输入：
+
+```text
+603986.SH,000001.SZ,300750.SZ
+```
+
+点击 `运行回测` 即可实时拉取前复权行情并在浏览器内完成回测。
+
 ## 基础运行
 
 默认运行兆易创新 `603986.SH`，使用前复权数据、MA5/MA20、默认成本和默认风控：

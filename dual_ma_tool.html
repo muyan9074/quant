@@ -114,6 +114,24 @@
     <aside class="side">
       <section class="panel">
         <h2>股票与数据</h2>
+        <div class="row">
+          <label for="dataSource">数据来源</label>
+          <select id="dataSource">
+            <option value="builtin" selected>内置前复权 CSV</option>
+            <option value="worker">Cloudflare Worker 实时获取</option>
+            <option value="upload">上传 CSV</option>
+          </select>
+        </div>
+        <div class="row">
+          <label for="symbolsInput">股票代码</label>
+          <input id="symbolsInput" value="603986.SH" placeholder="603986.SH,000001.SZ,300750.SZ">
+          <div class="hint">实时获取支持多支 A 股代码，用英文逗号分隔。</div>
+        </div>
+        <div class="row">
+          <label for="workerUrl">Cloudflare Worker 地址</label>
+          <input id="workerUrl" placeholder="https://你的-worker.workers.dev">
+          <div class="hint">Worker 地址只保存于当前浏览器页面，Tushare token 放在 Worker Secret 中。</div>
+        </div>
         <div class="checkrow">
           <input id="useBuiltIn" type="checkbox" checked>
           <span>使用内置 603986.SH 前复权数据</span>
@@ -403,8 +421,30 @@
     }
 
     async function loadDataSets() {
+      const source = $('dataSource').value;
       const sets = [];
-      if ($('useBuiltIn').checked) {
+      if (source === 'worker') {
+        const workerUrl = $('workerUrl').value.trim().replace(/\/+$/, '');
+        const symbols = $('symbolsInput').value.split(',').map(normSymbol).filter(Boolean);
+        if (!workerUrl) throw new Error('请填写 Cloudflare Worker 地址');
+        if (!symbols.length) throw new Error('请填写至少一个股票代码');
+        const qs = new URLSearchParams({
+          symbols: symbols.join(','),
+          start_date: $('startDate').value.trim(),
+          end_date: $('endDate').value.trim(),
+          adjust: $('adjust').value || 'qfq'
+        });
+        const payload = await fetch(`${workerUrl}/daily?${qs.toString()}`).then(async r => {
+          const text = await r.text();
+          let body = {};
+          try { body = text ? JSON.parse(text) : {}; } catch (_) {}
+          if (!r.ok) throw new Error(body.error || `Worker 请求失败：HTTP ${r.status}`);
+          return body;
+        });
+        if (!Array.isArray(payload.data)) throw new Error('Worker 返回格式无效');
+        payload.data.forEach(item => sets.push({ symbol: normSymbol(item.symbol), rows: item.rows || [] }));
+      }
+      if (source === 'builtin' && $('useBuiltIn').checked) {
         for (const item of BUILTIN) {
           const text = await fetch(item.url).then(r => {
             if (!r.ok) throw new Error(`无法读取内置数据：${item.url}`);
@@ -413,13 +453,13 @@
           sets.push({ symbol: item.symbol, rows: parseCsv(text) });
         }
       }
-      for (const file of $('uploadCsv').files) {
+      if (source === 'upload') for (const file of $('uploadCsv').files) {
         const text = await file.text();
         const rows = parseCsv(text);
         const symbol = normSymbol(rows[0]?.ts_code || file.name.replace(/_daily.*\.csv$/i, '').replace('_', '.'));
         sets.push({ symbol, rows });
       }
-      if (!sets.length) throw new Error('请选择内置数据或上传至少一个 CSV');
+      if (!sets.length) throw new Error('请选择数据来源，并提供股票代码或 CSV');
       return sets;
     }
 

@@ -1,0 +1,6 @@
+name = "tushare-proxy"
+main = "tushare-proxy.js"
+compatibility_date = "2026-07-07"
+
+[vars]
+DEFAULT_ADJUST = "qfq"
