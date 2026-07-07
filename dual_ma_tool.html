@@ -6,7 +6,7 @@
   <title>双均线策略回测工具</title>
   <style>
     :root {
-      --bg: #f5f7fa;
+      --bg: #f3f6fb;
       --panel: #ffffff;
       --ink: #182230;
       --muted: #667085;
@@ -14,22 +14,33 @@
       --up: #d92d20;
       --down: #039855;
       --accent: #2563eb;
+      --accent-2: #0891b2;
       --warn: #dc6803;
+      --violet: #7c3aed;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--ink);
-      background: var(--bg);
+      background:
+        linear-gradient(180deg, #eaf1fb 0, #f7f9fc 220px, var(--bg) 100%);
       font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
     }
     header {
-      background: var(--panel);
+      background: linear-gradient(135deg, #102a43 0%, #1d4ed8 52%, #0f766e 100%);
+      color: #fff;
       border-bottom: 1px solid var(--grid);
-      padding: 20px 24px 14px;
+      padding: 22px 24px 16px;
+      box-shadow: 0 12px 28px rgba(16, 42, 67, .16);
     }
-    h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: 0; }
-    .meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+    h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: 0; }
+    .meta { color: rgba(255,255,255,.82); font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+    .meta span {
+      border: 1px solid rgba(255,255,255,.24);
+      background: rgba(255,255,255,.10);
+      border-radius: 999px;
+      padding: 4px 9px;
+    }
     main {
       display: grid;
       grid-template-columns: 340px minmax(0, 1fr);
@@ -42,10 +53,18 @@
       border-radius: 8px;
       padding: 14px;
       min-width: 0;
+      box-shadow: 0 8px 20px rgba(16, 24, 40, .05);
     }
     .side { display: grid; align-content: start; gap: 12px; }
     .content { display: grid; align-content: start; gap: 12px; min-width: 0; }
-    h2 { margin: 0 0 10px; font-size: 15px; }
+    h2 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    h2::before {
+      content: "";
+      width: 4px;
+      height: 15px;
+      border-radius: 4px;
+      background: var(--accent-2);
+    }
     label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
     input, select, button {
       width: 100%;
@@ -56,13 +75,20 @@
       font: inherit;
       background: #fff;
     }
+    input:focus, select:focus {
+      outline: 2px solid rgba(37, 99, 235, .18);
+      border-color: var(--accent);
+    }
     button {
-      background: var(--accent);
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
       color: #fff;
       border-color: var(--accent);
       font-weight: 700;
       cursor: pointer;
+      box-shadow: 0 10px 22px rgba(37, 99, 235, .22);
+      transition: transform .12s ease, box-shadow .12s ease;
     }
+    button:hover { transform: translateY(-1px); box-shadow: 0 13px 26px rgba(37, 99, 235, .26); }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
     .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
     .row { margin-bottom: 9px; }
@@ -76,14 +102,34 @@
     }
     .checkrow input { width: auto; min-height: auto; }
     .hint { color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-    .card { border: 1px solid var(--grid); border-radius: 8px; padding: 11px; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .card {
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      padding: 12px;
+      background: linear-gradient(180deg, #fff, #f8fafc);
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 3px;
+      background: var(--accent);
+    }
+    .card.positive::before { background: var(--up); }
+    .card.negative::before { background: var(--down); }
+    .card.warn::before { background: var(--warn); }
+    .card.info::before { background: var(--violet); }
     .card .k { color: var(--muted); font-size: 12px; }
-    .card .v { margin-top: 5px; font-size: 19px; font-weight: 700; }
+    .card .v { margin-top: 6px; font-size: 20px; font-weight: 800; }
+    .card .s { margin-top: 4px; color: var(--muted); font-size: 11px; }
     table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    th, td { border-bottom: 1px solid var(--grid); padding: 7px 6px; text-align: right; white-space: nowrap; }
+    th, td { border-bottom: 1px solid var(--grid); padding: 8px 7px; text-align: right; white-space: nowrap; }
     th:first-child, td:first-child { text-align: left; }
-    th { color: var(--muted); font-weight: 600; }
+    th { color: var(--muted); font-weight: 700; background: #f8fafc; }
+    tr:hover td { background: #f9fbff; }
     .tablewrap { overflow: auto; }
     canvas { width: 100%; height: 320px; display: block; }
     #priceChart { height: 380px; }
@@ -231,6 +277,14 @@
     function fmtNum(v, d = 2) {
       const decimals = Number.isInteger(d) && d >= 0 && d <= 20 ? d : 2;
       return Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: decimals }) : '--';
+    }
+    function metricClass(value, inverse = false) {
+      if (!Number.isFinite(value)) return 'info';
+      const good = inverse ? value > -0.15 : value > 0;
+      const bad = inverse ? value <= -0.20 : value < 0;
+      if (good) return 'positive';
+      if (bad) return 'negative';
+      return 'info';
     }
     function normSymbol(s) { return String(s || '').trim().toUpperCase(); }
 
@@ -511,16 +565,24 @@
       const ok = results.filter(r => r.summary.status === 'ok');
       const best = ok.slice().sort((a, b) => b.summary.strategy_return - a.summary.strategy_return)[0];
       $('cards').innerHTML = best ? [
-        ['最佳策略收益', fmtPct(best.summary.strategy_return)],
-        ['买入持有收益', fmtPct(best.summary.buy_hold_return)],
-        ['最大回撤', fmtPct(best.summary.max_drawdown)],
-        ['交易次数', String(best.summary.trade_count)]
-      ].map(([k, v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('') : '';
+        { k: '策略累计收益', v: fmtPct(best.summary.strategy_return), s: best.symbol, cls: metricClass(best.summary.strategy_return) },
+        { k: '策略年化收益', v: fmtPct(best.summary.annual_return), s: '按 252 个交易日年化', cls: metricClass(best.summary.annual_return) },
+        { k: '买入持有收益', v: fmtPct(best.summary.buy_hold_return), s: '同期基准表现', cls: metricClass(best.summary.buy_hold_return) },
+        { k: '超额收益', v: fmtPct(best.summary.excess_return), s: '策略相对买入持有', cls: metricClass(best.summary.excess_return) },
+        { k: '最大回撤', v: fmtPct(best.summary.max_drawdown), s: '净值高点回撤', cls: metricClass(best.summary.max_drawdown, true) },
+        { k: '夏普比率', v: fmtNum(best.summary.sharpe, 3), s: '日收益年化波动调整', cls: metricClass(best.summary.sharpe) },
+        { k: '胜率', v: fmtPct(best.summary.win_rate), s: `${best.summary.trade_count} 笔交易`, cls: metricClass(best.summary.win_rate - 0.5) },
+        { k: '盈亏比', v: fmtNum(best.summary.payoff, 2), s: '平均盈利 / 平均亏损', cls: metricClass(Number.isFinite(best.summary.payoff) ? best.summary.payoff - 1 : null) },
+        { k: '平均持有天数', v: fmtNum(best.summary.avg_holding_days, 1), s: '单笔交易周期', cls: 'info' },
+        { k: '风控状态', v: best.summary.drawdown_stop_triggered ? '已触发' : '未触发', s: `止损 ${best.summary.stop_loss_count} 次`, cls: best.summary.drawdown_stop_triggered ? 'warn' : 'positive' }
+      ].map(m => `<div class="card ${m.cls}"><div class="k">${m.k}</div><div class="v">${m.v}</div><div class="s">${m.s}</div></div>`).join('') : '';
       table($('summaryTable'), results.map(r => r.summary), [
         { key: 'ts_code', label: '股票' }, { key: 'status', label: '状态' }, { key: 'strategy_return', label: '策略收益', format: fmtPct },
-        { key: 'buy_hold_return', label: '持有收益', format: fmtPct }, { key: 'excess_return', label: '超额收益', format: fmtPct },
-        { key: 'max_drawdown', label: '最大回撤', format: fmtPct }, { key: 'sharpe', label: '夏普', format: v => fmtNum(v, 3) },
-        { key: 'win_rate', label: '胜率', format: fmtPct }, { key: 'trade_count', label: '交易数' }, { key: 'stop_loss_count', label: '止损数' },
+        { key: 'annual_return', label: '年化收益', format: fmtPct }, { key: 'buy_hold_return', label: '持有收益', format: fmtPct },
+        { key: 'excess_return', label: '超额收益', format: fmtPct }, { key: 'max_drawdown', label: '最大回撤', format: fmtPct },
+        { key: 'sharpe', label: '夏普', format: v => fmtNum(v, 3) }, { key: 'win_rate', label: '胜率', format: fmtPct },
+        { key: 'payoff', label: '盈亏比', format: v => fmtNum(v, 2) }, { key: 'avg_holding_days', label: '平均持有天数', format: v => fmtNum(v, 1) },
+        { key: 'trade_count', label: '交易数' }, { key: 'stop_loss_count', label: '止损数' },
         { key: 'drawdown_stop_triggered', label: '回撤停交易', format: v => v ? '是' : '否' }
       ]);
       if (ok.length) {
