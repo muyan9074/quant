@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>双均线策略回测工具</title>
+  <style>
+    :root {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --ink: #182230;
+      --muted: #667085;
+      --grid: #e4e7ec;
+      --up: #d92d20;
+      --down: #039855;
+      --accent: #2563eb;
+      --warn: #dc6803;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: var(--bg);
+      font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--grid);
+      padding: 20px 24px 14px;
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; letter-spacing: 0; }
+    .meta { color: var(--muted); font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+    main {
+      display: grid;
+      grid-template-columns: 340px minmax(0, 1fr);
+      gap: 14px;
+      padding: 14px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      padding: 14px;
+      min-width: 0;
+    }
+    .side { display: grid; align-content: start; gap: 12px; }
+    .content { display: grid; align-content: start; gap: 12px; min-width: 0; }
+    h2 { margin: 0 0 10px; font-size: 15px; }
+    label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
+    input, select, button {
+      width: 100%;
+      min-height: 34px;
+      border: 1px solid var(--grid);
+      border-radius: 6px;
+      padding: 6px 8px;
+      font: inherit;
+      background: #fff;
+    }
+    button {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+    .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
+    .row { margin-bottom: 9px; }
+    .checkrow {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 30px;
+      color: var(--ink);
+      font-size: 13px;
+    }
+    .checkrow input { width: auto; min-height: auto; }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.5; }
+    .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .card { border: 1px solid var(--grid); border-radius: 8px; padding: 11px; }
+    .card .k { color: var(--muted); font-size: 12px; }
+    .card .v { margin-top: 5px; font-size: 19px; font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { border-bottom: 1px solid var(--grid); padding: 7px 6px; text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); font-weight: 600; }
+    .tablewrap { overflow: auto; }
+    canvas { width: 100%; height: 320px; display: block; }
+    #priceChart { height: 380px; }
+    .status { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .positive { color: var(--up); }
+    .negative { color: var(--down); }
+    @media (max-width: 980px) {
+      main { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      .grid2, .grid3 { grid-template-columns: 1fr; }
+      .cards { grid-template-columns: 1fr; }
+      main { padding: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>双均线策略回测工具</h1>
+    <div class="meta">
+      <span>默认数据：Tushare 前复权 qfq</span>
+      <span>策略：短均线上穿长均线买入，下穿卖出</span>
+      <span>执行：收盘出信号，次日开盘成交</span>
+    </div>
+  </header>
+  <main>
+    <aside class="side">
+      <section class="panel">
+        <h2>股票与数据</h2>
+        <div class="checkrow">
+          <input id="useBuiltIn" type="checkbox" checked>
+          <span>使用内置 603986.SH 前复权数据</span>
+        </div>
+        <div class="row">
+          <label for="uploadCsv">上传其他股票 CSV，可多选</label>
+          <input id="uploadCsv" type="file" accept=".csv" multiple>
+          <div class="hint">CSV 需包含 trade_date、open、close，建议包含 ts_code、high、low、vol、amount。</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>回测参数</h2>
+        <div class="grid2">
+          <div><label for="startDate">开始日期</label><input id="startDate" placeholder="YYYYMMDD"></div>
+          <div><label for="endDate">结束日期</label><input id="endDate" placeholder="YYYYMMDD"></div>
+          <div><label for="fastWindow">短均线</label><input id="fastWindow" type="number" value="5" min="1"></div>
+          <div><label for="slowWindow">长均线</label><input id="slowWindow" type="number" value="20" min="2"></div>
+          <div><label for="initialCash">初始资金</label><input id="initialCash" type="number" value="1000000" min="1"></div>
+          <div><label for="adjust">复权口径</label><select id="adjust"><option value="qfq">qfq 前复权</option></select></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>成本与风控</h2>
+        <div class="grid2">
+          <div><label for="buyCommission">买入佣金</label><input id="buyCommission" type="number" value="0.0003" step="0.0001"></div>
+          <div><label for="sellCommission">卖出佣金</label><input id="sellCommission" type="number" value="0.0003" step="0.0001"></div>
+          <div><label for="stampTax">印花税</label><input id="stampTax" type="number" value="0.0005" step="0.0001"></div>
+          <div><label for="buySlippage">买入滑点</label><input id="buySlippage" type="number" value="0.0002" step="0.0001"></div>
+          <div><label for="sellSlippage">卖出滑点</label><input id="sellSlippage" type="number" value="0.0002" step="0.0001"></div>
+          <div><label for="stopLossPct">单笔止损</label><input id="stopLossPct" type="number" value="0.08" step="0.01"></div>
+          <div><label for="maxDdPct">最大回撤停交易</label><input id="maxDdPct" type="number" value="0.20" step="0.01"></div>
+        </div>
+        <div class="checkrow"><input id="enableStopLoss" type="checkbox" checked><span>启用单笔止损</span></div>
+        <div class="checkrow"><input id="enableDrawdownStop" type="checkbox" checked><span>启用最大回撤停交易</span></div>
+        <button id="runBtn">运行回测</button>
+        <div id="status" class="status"></div>
+      </section>
+    </aside>
+
+    <section class="content">
+      <section class="panel">
+        <h2>核心结果</h2>
+        <div id="cards" class="cards"></div>
+      </section>
+      <section class="panel">
+        <h2>股票对比</h2>
+        <div class="tablewrap"><table id="summaryTable"></table></div>
+      </section>
+      <section class="panel">
+        <h2>策略净值对比</h2>
+        <canvas id="navChart"></canvas>
+      </section>
+      <section class="panel">
+        <h2>价格、双均线与买卖点</h2>
+        <canvas id="priceChart"></canvas>
+      </section>
+      <section class="panel">
+        <h2>交易明细</h2>
+        <div class="tablewrap"><table id="tradesTable"></table></div>
+      </section>
+      <section class="panel">
+        <h2>风控事件</h2>
+        <div class="tablewrap"><table id="riskTable"></table></div>
+      </section>
+    </section>
+  </main>
+
+  <script>
+    const BUILTIN = [{ symbol: '603986.SH', url: 'data/stocks/603986_SH_daily_qfq.csv' }];
+    const $ = id => document.getElementById(id);
+    const colors = ['#2563eb', '#d92d20', '#039855', '#7c3aed', '#f59e0b', '#475467'];
+
+    function parseCsv(text) {
+      const rows = [];
+      let row = [], cell = '', quote = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i], next = text[i + 1];
+        if (ch === '"' && quote && next === '"') { cell += '"'; i++; }
+        else if (ch === '"') quote = !quote;
+        else if (ch === ',' && !quote) { row.push(cell); cell = ''; }
+        else if ((ch === '\n' || ch === '\r') && !quote) {
+          if (ch === '\r' && next === '\n') i++;
+          row.push(cell); cell = '';
+          if (row.some(v => v !== '')) rows.push(row);
+          row = [];
+        } else cell += ch;
+      }
+      if (cell || row.length) { row.push(cell); rows.push(row); }
+      const headers = rows.shift().map(h => h.trim());
+      return rows.map(r => Object.fromEntries(headers.map((h, i) => [h, r[i] ?? ''])));
+    }
+
+    function toNumber(v) { return Number(String(v).replace(/,/g, '')); }
+    function fmtPct(v) { return Number.isFinite(v) ? (v * 100).toFixed(2) + '%' : '--'; }
+    function fmtNum(v, d = 2) {
+      const decimals = Number.isInteger(d) && d >= 0 && d <= 20 ? d : 2;
+      return Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: decimals }) : '--';
+    }
+    function normSymbol(s) { return String(s || '').trim().toUpperCase(); }
+
+    function readParams() {
+      const p = {
+        startDate: $('startDate').value.trim(),
+        endDate: $('endDate').value.trim(),
+        fastWindow: Number($('fastWindow').value),
+        slowWindow: Number($('slowWindow').value),
+        initialCash: Number($('initialCash').value),
+        buyCommission: Number($('buyCommission').value),
+        sellCommission: Number($('sellCommission').value),
+        stampTax: Number($('stampTax').value),
+        buySlippage: Number($('buySlippage').value),
+        sellSlippage: Number($('sellSlippage').value),
+        enableStopLoss: $('enableStopLoss').checked,
+        stopLossPct: Number($('stopLossPct').value),
+        enableDrawdownStop: $('enableDrawdownStop').checked,
+        maxDrawdownStopPct: Number($('maxDdPct').value)
+      };
+      if (!(p.fastWindow > 0 && p.slowWindow > p.fastWindow)) throw new Error('均线参数必须满足：短均线 > 0 且短均线 < 长均线');
+      if (!(p.initialCash > 0)) throw new Error('初始资金必须大于 0');
+      for (const k of ['buyCommission', 'sellCommission', 'stampTax', 'buySlippage', 'sellSlippage']) {
+        if (p[k] < 0) throw new Error('成本和滑点不能为负数');
+      }
+      if (p.enableStopLoss && !(p.stopLossPct > 0 && p.stopLossPct < 1)) throw new Error('单笔止损比例必须在 0 到 1 之间');
+      if (p.enableDrawdownStop && !(p.maxDrawdownStopPct > 0 && p.maxDrawdownStopPct < 1)) throw new Error('最大回撤阈值必须在 0 到 1 之间');
+      return p;
+    }
+
+    function normalizeRows(rows, fallbackSymbol) {
+      return rows.map(r => ({
+        ts_code: normSymbol(r.ts_code || fallbackSymbol),
+        trade_date: String(r.trade_date).replaceAll('-', '').trim(),
+        open: toNumber(r.open),
+        high: toNumber(r.high || r.open),
+        low: toNumber(r.low || r.open),
+        close: toNumber(r.close),
+        vol: toNumber(r.vol || 0),
+        amount: toNumber(r.amount || 0),
+        adjust: r.adjust || 'qfq'
+      })).filter(r => r.trade_date && r.open > 0 && r.close > 0)
+        .sort((a, b) => a.trade_date.localeCompare(b.trade_date));
+    }
+
+    function sma(values, period) {
+      const out = Array(values.length).fill(null);
+      let sum = 0;
+      values.forEach((v, i) => {
+        sum += v;
+        if (i >= period) sum -= values[i - period];
+        if (i >= period - 1) out[i] = sum / period;
+      });
+      return out;
+    }
+
+    function maxDrawdown(nav) {
+      let peak = nav[0] || 1, min = 0;
+      nav.forEach(v => { peak = Math.max(peak, v); min = Math.min(min, v / peak - 1); });
+      return min;
+    }
+
+    function sharpe(nav) {
+      const rets = [];
+      for (let i = 1; i < nav.length; i++) rets.push(nav[i] / nav[i - 1] - 1);
+      if (rets.length < 2) return null;
+      const mean = rets.reduce((a, b) => a + b, 0) / rets.length;
+      const variance = rets.reduce((a, b) => a + (b - mean) ** 2, 0) / (rets.length - 1);
+      const sd = Math.sqrt(variance);
+      return sd ? mean / sd * Math.sqrt(252) : null;
+    }
+
+    function runBacktest(symbol, rawRows, p) {
+      let rows = normalizeRows(rawRows, symbol);
+      if (p.startDate) rows = rows.filter(r => r.trade_date >= p.startDate);
+      if (p.endDate) rows = rows.filter(r => r.trade_date <= p.endDate);
+      if (rows.length <= p.slowWindow + 2) throw new Error(`${symbol} 有效数据不足`);
+      const closes = rows.map(r => r.close);
+      const fast = sma(closes, p.fastWindow);
+      const slow = sma(closes, p.slowWindow);
+      let cash = p.initialCash, shares = 0, position = 0, entry = null, pending = null, halted = false;
+      let entrySignalDate = '', entryRawOpen = null, buyFee = 0, equityPeak = 1;
+      const trades = [], equity = [], risks = [];
+      const buyHoldShares = p.initialCash / rows[0].close;
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i];
+        if (pending) {
+          if (pending.action === 'buy' && !halted && position === 0) {
+            const price = r.open * (1 + p.buySlippage);
+            shares = cash / (price * (1 + p.buyCommission));
+            const gross = shares * price;
+            buyFee = gross * p.buyCommission;
+            cash -= gross + buyFee;
+            if (Math.abs(cash) < 1e-6) cash = 0;
+            entry = { date: r.trade_date, price, gross };
+            entrySignalDate = pending.signalDate;
+            entryRawOpen = r.open;
+            position = 1;
+          } else if (pending.action === 'sell' && position === 1) {
+            const price = r.open * (1 - p.sellSlippage);
+            const gross = shares * price;
+            const sellFee = gross * p.sellCommission;
+            const stamp = gross * p.stampTax;
+            cash += gross - sellFee - stamp;
+            const totalCost = buyFee + sellFee + stamp + shares * ((entry.price - entryRawOpen) + (r.open - price));
+            trades.push({
+              ts_code: symbol,
+              entry_signal_date: entrySignalDate,
+              entry_date: entry.date,
+              entry_price: entry.price,
+              exit_signal_date: pending.signalDate,
+              exit_date: r.trade_date,
+              exit_price: price,
+              exit_reason: pending.reason,
+              holding_days: rows.filter(x => x.trade_date >= entry.date && x.trade_date <= r.trade_date).length,
+              gross_return: price / entry.price - 1,
+              net_return: cash / (entry.gross + buyFee) - 1,
+              total_cost: totalCost
+            });
+            shares = 0; position = 0; entry = null; buyFee = 0; entrySignalDate = ''; entryRawOpen = null;
+          }
+          pending = null;
+        }
+        const positionValue = shares * r.close;
+        const totalAsset = cash + positionValue;
+        const nav = totalAsset / p.initialCash;
+        const buyHoldNav = buyHoldShares * r.close / p.initialCash;
+        equityPeak = Math.max(equityPeak, nav);
+        const drawdown = nav / equityPeak - 1;
+        equity.push({
+          trade_date: r.trade_date, position: shares, is_halted: halted, cash, position_value: positionValue,
+          total_asset: totalAsset, strategy_nav: nav, buy_hold_nav: buyHoldNav, drawdown,
+          ma_fast: fast[i], ma_slow: slow[i], close: r.close
+        });
+        const nextExists = i < rows.length - 1;
+        let exitReason = null, trigger = null, threshold = null;
+        if (!halted && p.enableDrawdownStop && drawdown <= -p.maxDrawdownStopPct) {
+          exitReason = 'max_drawdown_stop'; trigger = drawdown; threshold = p.maxDrawdownStopPct; halted = true;
+        } else if (position === 1 && p.enableStopLoss && r.close / entry.price - 1 <= -p.stopLossPct) {
+          exitReason = 'stop_loss'; trigger = r.close / entry.price - 1; threshold = p.stopLossPct;
+        } else if (position === 1 && i > 0 && fast[i - 1] != null && slow[i - 1] != null && fast[i - 1] >= slow[i - 1] && fast[i] < slow[i]) {
+          exitReason = 'death_cross';
+        }
+        if (exitReason) {
+          if (exitReason !== 'death_cross') {
+            risks.push({
+              ts_code: symbol, event_date: r.trade_date, event_type: exitReason, trigger_value: trigger,
+              threshold, execution_date: nextExists && position ? rows[i + 1].trade_date : '',
+              execution_price: nextExists && position ? rows[i + 1].open * (1 - p.sellSlippage) : '',
+              status: nextExists && position ? 'executed' : position ? 'not_executed_no_next_day' : 'halted_no_position'
+            });
+          }
+          if (nextExists && position === 1) pending = { action: 'sell', signalDate: r.trade_date, reason: exitReason };
+          continue;
+        }
+        if (position === 0 && !halted && i > 0 && fast[i - 1] != null && slow[i - 1] != null && fast[i - 1] <= slow[i - 1] && fast[i] > slow[i]) {
+          if (nextExists) pending = { action: 'buy', signalDate: r.trade_date, reason: 'golden_cross' };
+        }
+      }
+      if (position === 1 && entry) {
+        const r = rows[rows.length - 1], price = r.close, gross = shares * price, sellFee = gross * p.sellCommission, stamp = gross * p.stampTax;
+        const finalCash = cash + gross - sellFee - stamp;
+        trades.push({
+          ts_code: symbol, entry_signal_date: entrySignalDate, entry_date: entry.date, entry_price: entry.price,
+          exit_signal_date: r.trade_date, exit_date: r.trade_date, exit_price: price, exit_reason: 'end_of_backtest',
+          holding_days: rows.filter(x => x.trade_date >= entry.date).length, gross_return: price / entry.price - 1,
+          net_return: finalCash / (entry.gross + buyFee) - 1, total_cost: buyFee + sellFee + stamp
+        });
+      }
+      const navs = equity.map(e => e.strategy_nav), buyHold = equity.map(e => e.buy_hold_nav);
+      const wins = trades.filter(t => t.net_return > 0), losses = trades.filter(t => t.net_return <= 0);
+      const avgWin = wins.length ? wins.reduce((s, t) => s + t.net_return, 0) / wins.length : 0;
+      const avgLoss = losses.length ? Math.abs(losses.reduce((s, t) => s + t.net_return, 0) / losses.length) : 0;
+      const totalReturn = navs.at(-1) - 1;
+      const years = navs.length / 252;
+      return {
+        symbol, rows, equity, trades, risks,
+        summary: {
+          ts_code: symbol, status: 'ok', adjust: 'qfq', start_date: rows[0].trade_date, end_date: rows.at(-1).trade_date,
+          strategy_return: totalReturn, buy_hold_return: buyHold.at(-1) - 1, excess_return: navs.at(-1) - buyHold.at(-1),
+          annual_return: (1 + totalReturn) ** (1 / years) - 1, max_drawdown: maxDrawdown(navs), sharpe: sharpe(navs),
+          win_rate: trades.length ? wins.length / trades.length : 0, trade_count: trades.length,
+          payoff: avgLoss ? avgWin / avgLoss : null, avg_holding_days: trades.length ? trades.reduce((s, t) => s + t.holding_days, 0) / trades.length : 0,
+          stop_loss_count: trades.filter(t => t.exit_reason === 'stop_loss').length,
+          drawdown_stop_triggered: risks.some(r => r.event_type === 'max_drawdown_stop')
+        }
+      };
+    }
+
+    async function loadDataSets() {
+      const sets = [];
+      if ($('useBuiltIn').checked) {
+        for (const item of BUILTIN) {
+          const text = await fetch(item.url).then(r => {
+            if (!r.ok) throw new Error(`无法读取内置数据：${item.url}`);
+            return r.text();
+          });
+          sets.push({ symbol: item.symbol, rows: parseCsv(text) });
+        }
+      }
+      for (const file of $('uploadCsv').files) {
+        const text = await file.text();
+        const rows = parseCsv(text);
+        const symbol = normSymbol(rows[0]?.ts_code || file.name.replace(/_daily.*\.csv$/i, '').replace('_', '.'));
+        sets.push({ symbol, rows });
+      }
+      if (!sets.length) throw new Error('请选择内置数据或上传至少一个 CSV');
+      return sets;
+    }
+
+    function table(el, rows, cols) {
+      if (!rows.length) { el.innerHTML = '<tr><td>无数据</td></tr>'; return; }
+      el.innerHTML = '<thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '</tr></thead><tbody>' +
+        rows.map(r => '<tr>' + cols.map(c => `<td>${c.format ? c.format(r[c.key], r) : (r[c.key] ?? '')}</td>`).join('') + '</tr>').join('') +
+        '</tbody>';
+    }
+
+    function drawLine(canvas, title, datasets) {
+      const dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+      const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const w = rect.width, h = rect.height, pad = { l: 58, r: 18, t: 34, b: 34 };
+      ctx.clearRect(0, 0, w, h); ctx.font = '12px "Microsoft YaHei", Arial'; ctx.fillStyle = '#182230'; ctx.fillText(title, pad.l, 20);
+      const vals = datasets.flatMap(d => d.values.filter(Number.isFinite));
+      let min = Math.min(...vals), max = Math.max(...vals); if (min === max) { min -= 1; max += 1; }
+      const ypad = (max - min) * .05; min -= ypad; max += ypad;
+      const area = { x: pad.l, y: pad.t, w: w - pad.l - pad.r, h: h - pad.t - pad.b };
+      ctx.strokeStyle = '#e4e7ec';
+      for (let i = 0; i <= 4; i++) {
+        const y = area.y + area.h * i / 4, v = max - (max - min) * i / 4;
+        ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
+        ctx.fillStyle = '#667085'; ctx.fillText(v.toFixed(2), 6, y + 4);
+      }
+      datasets.forEach((d, di) => {
+        ctx.strokeStyle = d.color || colors[di % colors.length]; ctx.lineWidth = d.width || 2; ctx.beginPath();
+        d.values.forEach((v, i) => {
+          if (!Number.isFinite(v)) return;
+          const x = area.x + area.w * i / Math.max(1, d.values.length - 1);
+          const y = area.y + (max - v) / (max - min) * area.h;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+        ctx.fillStyle = ctx.strokeStyle; ctx.fillText(d.name, area.x + di * 110, h - 10);
+      });
+      const markers = datasets.find(d => d.markers)?.markers || [];
+      markers.forEach(m => {
+        if (!Number.isFinite(m.value)) return;
+        const x = area.x + area.w * m.index / Math.max(1, datasets[0].values.length - 1);
+        const y = area.y + (max - m.value) / (max - min) * area.h;
+        ctx.fillStyle = m.color; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillText(m.label, x + 7, y - 7);
+      });
+    }
+
+    function render(results) {
+      const ok = results.filter(r => r.summary.status === 'ok');
+      const best = ok.slice().sort((a, b) => b.summary.strategy_return - a.summary.strategy_return)[0];
+      $('cards').innerHTML = best ? [
+        ['最佳策略收益', fmtPct(best.summary.strategy_return)],
+        ['买入持有收益', fmtPct(best.summary.buy_hold_return)],
+        ['最大回撤', fmtPct(best.summary.max_drawdown)],
+        ['交易次数', String(best.summary.trade_count)]
+      ].map(([k, v]) => `<div class="card"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('') : '';
+      table($('summaryTable'), results.map(r => r.summary), [
+        { key: 'ts_code', label: '股票' }, { key: 'status', label: '状态' }, { key: 'strategy_return', label: '策略收益', format: fmtPct },
+        { key: 'buy_hold_return', label: '持有收益', format: fmtPct }, { key: 'excess_return', label: '超额收益', format: fmtPct },
+        { key: 'max_drawdown', label: '最大回撤', format: fmtPct }, { key: 'sharpe', label: '夏普', format: v => fmtNum(v, 3) },
+        { key: 'win_rate', label: '胜率', format: fmtPct }, { key: 'trade_count', label: '交易数' }, { key: 'stop_loss_count', label: '止损数' },
+        { key: 'drawdown_stop_triggered', label: '回撤停交易', format: v => v ? '是' : '否' }
+      ]);
+      if (ok.length) {
+        drawLine($('navChart'), '策略净值对比', ok.map(r => ({ name: r.symbol, values: r.equity.map(e => e.strategy_nav) })));
+        const first = ok[0], closeByDate = new Map(first.equity.map((e, i) => [e.trade_date, { i, close: e.close }]));
+        const markers = [];
+        first.trades.forEach(t => {
+          const ent = closeByDate.get(t.entry_date), ext = closeByDate.get(t.exit_date);
+          if (ent) markers.push({ index: ent.i, value: ent.close, color: '#d92d20', label: 'BUY' });
+          if (ext) markers.push({ index: ext.i, value: ext.close, color: t.exit_reason.includes('stop') ? '#dc6803' : '#039855', label: t.exit_reason.includes('stop') ? 'RISK' : 'SELL' });
+        });
+        drawLine($('priceChart'), `${first.symbol} 价格与双均线`, [
+          { name: '收盘价', values: first.equity.map(e => e.close), color: '#182230', markers },
+          { name: 'MA快线', values: first.equity.map(e => e.ma_fast), color: '#f59e0b' },
+          { name: 'MA慢线', values: first.equity.map(e => e.ma_slow), color: '#2563eb' }
+        ]);
+        table($('tradesTable'), first.trades, [
+          { key: 'entry_date', label: '买入日' }, { key: 'exit_date', label: '卖出日' }, { key: 'exit_reason', label: '原因' },
+          { key: 'entry_price', label: '买入价', format: fmtNum }, { key: 'exit_price', label: '卖出价', format: fmtNum },
+          { key: 'holding_days', label: '持有天数' }, { key: 'net_return', label: '净收益', format: fmtPct }, { key: 'total_cost', label: '成本', format: fmtNum }
+        ]);
+        table($('riskTable'), first.risks, [
+          { key: 'event_date', label: '触发日' }, { key: 'event_type', label: '类型' }, { key: 'trigger_value', label: '触发值', format: fmtPct },
+          { key: 'threshold', label: '阈值', format: fmtPct }, { key: 'execution_date', label: '执行日' }, { key: 'execution_price', label: '执行价', format: fmtNum }, { key: 'status', label: '状态' }
+        ]);
+      }
+    }
+
+    $('runBtn').addEventListener('click', async () => {
+      try {
+        $('status').textContent = '正在读取数据并回测...';
+        const params = readParams();
+        const sets = await loadDataSets();
+        const results = sets.map(set => {
+          try { return runBacktest(set.symbol, set.rows, params); }
+          catch (err) { return { symbol: set.symbol, summary: { ts_code: set.symbol, status: err.message } }; }
+        });
+        render(results);
+        $('status').textContent = `完成：${results.length} 支股票，${results.filter(r => r.summary.status === 'ok').length} 支成功。`;
+      } catch (err) {
+        $('status').textContent = `错误：${err.message}`;
+      }
+    });
+    window.addEventListener('resize', () => $('runBtn').click());
+    $('runBtn').click();
+  </script>
+</body>
+</html>
