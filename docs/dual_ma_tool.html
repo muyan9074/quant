@@ -6,41 +6,82 @@
   <title>双均线策略回测工具</title>
   <style>
     :root {
-      --bg: #f3f6fb;
+      --bg: #eef3f8;
       --panel: #ffffff;
-      --ink: #182230;
-      --muted: #667085;
-      --grid: #e4e7ec;
-      --up: #d92d20;
-      --down: #039855;
-      --accent: #2563eb;
-      --accent-2: #0891b2;
-      --warn: #dc6803;
-      --violet: #7c3aed;
+      --panel-soft: #f8fafc;
+      --ink: #0f172a;
+      --muted: #64748b;
+      --grid: #dbe5ef;
+      --grid-strong: #b8c7d9;
+      --up: #dc2626;
+      --down: #059669;
+      --accent: #1e3a8a;
+      --accent-2: #0e7490;
+      --gold: #b7791f;
+      --gold-soft: #fff7df;
+      --warn: #d97706;
+      --violet: #6d5bd0;
+      --navy: #07111f;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       color: var(--ink);
       background:
-        linear-gradient(180deg, #eaf1fb 0, #f7f9fc 220px, var(--bg) 100%);
+        radial-gradient(circle at 20% -10%, rgba(217, 119, 6, .16), transparent 34%),
+        radial-gradient(circle at 78% 0%, rgba(14, 116, 144, .22), transparent 30%),
+        linear-gradient(180deg, #e7eef7 0, #f7f9fc 245px, var(--bg) 100%);
       font-family: "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+      font-variant-numeric: tabular-nums;
     }
     header {
-      background: linear-gradient(135deg, #102a43 0%, #1d4ed8 52%, #0f766e 100%);
+      background:
+        linear-gradient(135deg, rgba(7,17,31,.96) 0%, rgba(30,58,138,.94) 56%, rgba(14,116,144,.92) 100%),
+        radial-gradient(circle at 80% 0%, rgba(245,158,11,.35), transparent 32%);
       color: #fff;
-      border-bottom: 1px solid var(--grid);
+      border-bottom: 1px solid rgba(255,255,255,.16);
       padding: 22px 24px 16px;
-      box-shadow: 0 12px 28px rgba(16, 42, 67, .16);
+      box-shadow: 0 18px 48px rgba(7, 17, 31, .24);
+    }
+    .topline {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
     }
     h1 { margin: 0 0 8px; font-size: 26px; letter-spacing: 0; }
-    .meta { color: rgba(255,255,255,.82); font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px 18px; }
+    .brandline { display: flex; align-items: center; gap: 10px; }
+    .brandmark {
+      width: 34px;
+      height: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,.05));
+      border: 1px solid rgba(255,255,255,.28);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(0,0,0,.16);
+    }
+    .brandmark svg, .icon svg, .metric-icon svg { width: 18px; height: 18px; display: block; }
+    .meta { color: rgba(255,255,255,.82); font-size: 13px; display: flex; flex-wrap: wrap; gap: 10px 12px; }
     .meta span {
       border: 1px solid rgba(255,255,255,.24);
       background: rgba(255,255,255,.10);
       border-radius: 999px;
       padding: 4px 9px;
+      backdrop-filter: blur(10px);
     }
+    .run-badge {
+      min-width: 126px;
+      border: 1px solid rgba(255,255,255,.26);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(14px);
+      text-align: right;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+    }
+    .run-badge .label { color: rgba(255,255,255,.72); font-size: 11px; }
+    .run-badge .value { margin-top: 2px; font-size: 15px; font-weight: 800; }
     main {
       display: grid;
       grid-template-columns: 340px minmax(0, 1fr);
@@ -53,17 +94,41 @@
       border-radius: 8px;
       padding: 14px;
       min-width: 0;
-      box-shadow: 0 8px 20px rgba(16, 24, 40, .05);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, .075);
+      position: relative;
     }
+    .panel::after {
+      content: "";
+      position: absolute;
+      inset: 0 0 auto 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(183,121,31,.35), transparent);
+      pointer-events: none;
+    }
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .panel-head h2 { margin-bottom: 2px; }
     .side { display: grid; align-content: start; gap: 12px; }
     .content { display: grid; align-content: start; gap: 12px; min-width: 0; }
     h2 { margin: 0 0 10px; font-size: 15px; display: flex; align-items: center; gap: 8px; }
     h2::before {
-      content: "";
-      width: 4px;
-      height: 15px;
-      border-radius: 4px;
-      background: var(--accent-2);
+      display: none;
+    }
+    .icon {
+      width: 28px;
+      height: 28px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      color: var(--accent);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #eff6ff, #f8fafc);
+      border: 1px solid #dbeafe;
     }
     label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 5px; }
     input, select, button {
@@ -76,22 +141,58 @@
       background: #fff;
     }
     input:focus, select:focus {
-      outline: 2px solid rgba(37, 99, 235, .18);
+      outline: 2px solid rgba(183, 121, 31, .20);
       border-color: var(--accent);
     }
     button {
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      background: linear-gradient(135deg, #1e3a8a, #0e7490 62%, #b7791f);
       color: #fff;
       border-color: var(--accent);
       font-weight: 700;
       cursor: pointer;
-      box-shadow: 0 10px 22px rgba(37, 99, 235, .22);
+      box-shadow: 0 12px 26px rgba(30, 58, 138, .25);
       transition: transform .12s ease, box-shadow .12s ease;
     }
-    button:hover { transform: translateY(-1px); box-shadow: 0 13px 26px rgba(37, 99, 235, .26); }
+    button:hover { transform: translateY(-1px); box-shadow: 0 15px 30px rgba(30, 58, 138, .30); }
+    button:disabled {
+      cursor: wait;
+      opacity: .78;
+      transform: none;
+      box-shadow: none;
+    }
+    .contextbar {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .context-item {
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffffff, #f8fbff);
+      padding: 10px 12px;
+      min-width: 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.75);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .context-item .label {
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .context-item .value {
+      margin-top: 4px;
+      font-size: 14px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
     .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; }
     .row { margin-bottom: 9px; }
+    .source-block { display: none; }
+    .source-block.active { display: block; }
     .checkrow {
       display: flex;
       align-items: center;
@@ -102,64 +203,151 @@
     }
     .checkrow input { width: auto; min-height: auto; }
     .hint { color: var(--muted); font-size: 12px; line-height: 1.5; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+    .cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
     .card {
       border: 1px solid var(--grid);
       border-radius: 8px;
       padding: 12px;
-      background: linear-gradient(180deg, #fff, #f8fafc);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.97), rgba(248,250,252,.94)),
+        radial-gradient(circle at 100% 0%, rgba(183,121,31,.10), transparent 28%);
       position: relative;
       overflow: hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.8), 0 10px 24px rgba(15,23,42,.045);
     }
     .card::before {
       content: "";
       position: absolute;
       inset: 0 0 auto 0;
       height: 3px;
-      background: var(--accent);
+      background: linear-gradient(90deg, var(--accent), var(--gold));
     }
     .card.positive::before { background: var(--up); }
     .card.negative::before { background: var(--down); }
     .card.warn::before { background: var(--warn); }
     .card.info::before { background: var(--violet); }
     .card .k { color: var(--muted); font-size: 12px; }
-    .card .v { margin-top: 6px; font-size: 20px; font-weight: 800; }
+    .card .v { margin-top: 6px; font-size: 21px; font-weight: 850; color: #172033; }
     .card .s { margin-top: 4px; color: var(--muted); font-size: 11px; }
-    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .metric-top {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .metric-icon {
+      width: 24px;
+      height: 24px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 7px;
+      background: var(--gold-soft);
+      color: var(--gold);
+      border: 1px solid rgba(183,121,31,.22);
+      flex: 0 0 auto;
+    }
+    .meter {
+      margin-top: 9px;
+      height: 4px;
+      border-radius: 999px;
+      background: #eef2f7;
+      overflow: hidden;
+    }
+    .meter span {
+      display: block;
+      width: var(--meter, 56%);
+      height: 100%;
+      border-radius: inherit;
+      background: currentColor;
+      opacity: .72;
+    }
+    table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12px; }
     th, td { border-bottom: 1px solid var(--grid); padding: 8px 7px; text-align: right; white-space: nowrap; }
     th:first-child, td:first-child { text-align: left; }
     th { color: var(--muted); font-weight: 700; background: #f8fafc; }
+    td { background: #fff; }
+    th:first-child, td:first-child {
+      position: sticky;
+      left: 0;
+      z-index: 3;
+      min-width: 96px;
+      max-width: 132px;
+      background: #fff;
+      box-shadow: 10px 0 14px -12px rgba(15, 23, 42, .55), 1px 0 0 var(--grid);
+    }
+    th:first-child { z-index: 4; background: #f8fafc; }
     tr:hover td { background: #f9fbff; }
-    .tablewrap { overflow: auto; }
+    tr:hover td:first-child { background: #f9fbff; }
+    .tablewrap {
+      overflow: auto;
+      border: 1px solid var(--grid);
+      border-radius: 8px;
+      background: #fff;
+    }
     canvas { width: 100%; height: 320px; display: block; }
     #priceChart { height: 380px; }
-    .status { color: var(--muted); font-size: 13px; line-height: 1.6; }
+    .status {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+      min-height: 22px;
+    }
+    .status.is-loading { color: var(--accent); }
+    .status.is-error { color: var(--down); }
     .positive { color: var(--up); }
     .negative { color: var(--down); }
+    @media (prefers-reduced-motion: reduce) {
+      * { transition: none !important; animation: none !important; }
+    }
     @media (max-width: 980px) {
       main { grid-template-columns: 1fr; }
+      .contextbar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
     @media (max-width: 560px) {
       .grid2, .grid3 { grid-template-columns: 1fr; }
+      .contextbar { grid-template-columns: 1fr; }
       .cards { grid-template-columns: 1fr; }
       main { padding: 10px; }
+      header { padding: 18px 16px 14px; }
+      .topline { display: block; }
+      .run-badge { margin-top: 12px; text-align: left; }
     }
   </style>
 </head>
 <body>
   <header>
+    <div class="topline">
+      <div>
+    <div class="brandline">
+      <span class="brandmark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 18V6" />
+          <path d="M8 18v-5" />
+          <path d="M12 18V9" />
+          <path d="M16 18v-7" />
+          <path d="M20 18V4" />
+          <path d="M5 13l4-4 4 3 6-7" />
+        </svg>
+      </span>
     <h1>双均线策略回测工具</h1>
+    </div>
     <div class="meta">
       <span>默认数据：Tushare 前复权 qfq</span>
       <span>策略：短均线上穿长均线买入，下穿卖出</span>
       <span>执行：收盘出信号，次日开盘成交</span>
     </div>
+      </div>
+      <div class="run-badge" aria-label="当前回测状态">
+        <div class="label">当前状态</div>
+        <div id="runBadge" class="value">待运行</div>
+      </div>
+    </div>
   </header>
   <main>
     <aside class="side">
       <section class="panel">
-        <h2>股票与数据</h2>
+        <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"/><path d="M4 12h16"/><path d="M4 17h10"/><path d="M7 4v16"/><path d="M17 4v8"/></svg></span>股票与数据</h2>
         <div class="row">
           <label for="dataSource">数据来源</label>
           <select id="dataSource">
@@ -168,9 +356,10 @@
             <option value="upload">上传 CSV</option>
           </select>
         </div>
+        <div id="workerFields" class="source-block">
         <div class="row">
           <label for="symbolsInput">股票代码</label>
-          <input id="symbolsInput" value="603986.SH" placeholder="603986.SH,000001.SZ,300750.SZ">
+          <input id="symbolsInput" value="603986.SH,601988.SH" placeholder="603986.SH,601988.SH,000001.SZ">
           <div class="hint">实时获取支持多支 A 股代码，用英文逗号分隔。</div>
         </div>
         <div class="row">
@@ -178,31 +367,34 @@
           <input id="workerUrl" placeholder="https://你的-worker.workers.dev">
           <div class="hint">Worker 地址只保存于当前浏览器页面，Tushare token 放在 Worker Secret 中。</div>
         </div>
-        <div class="checkrow">
-          <input id="useBuiltIn" type="checkbox" checked>
-          <span>使用内置 603986.SH 前复权数据</span>
         </div>
+        <div id="builtinFields" class="source-block active">
+          <div class="hint">当前将直接读取本地内置前复权 CSV：603986.SH、601988.SH。</div>
+        </div>
+        <div id="uploadFields" class="source-block">
         <div class="row">
           <label for="uploadCsv">上传其他股票 CSV，可多选</label>
           <input id="uploadCsv" type="file" accept=".csv" multiple>
           <div class="hint">CSV 需包含 trade_date、open、close，建议包含 ts_code、high、low、vol、amount。</div>
         </div>
+        </div>
       </section>
 
       <section class="panel">
-        <h2>回测参数</h2>
+        <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h9"/><path d="M17 6h3"/><circle cx="15" cy="6" r="2"/><path d="M4 12h3"/><path d="M11 12h9"/><circle cx="9" cy="12" r="2"/><path d="M4 18h11"/><path d="M19 18h1"/><circle cx="17" cy="18" r="2"/></svg></span>回测参数</h2>
         <div class="grid2">
           <div><label for="startDate">开始日期</label><input id="startDate" placeholder="YYYYMMDD"></div>
           <div><label for="endDate">结束日期</label><input id="endDate" placeholder="YYYYMMDD"></div>
           <div><label for="fastWindow">短均线</label><input id="fastWindow" type="number" value="5" min="1"></div>
           <div><label for="slowWindow">长均线</label><input id="slowWindow" type="number" value="20" min="2"></div>
           <div><label for="initialCash">初始资金</label><input id="initialCash" type="number" value="1000000" min="1"></div>
+          <div><label for="treasuryYield">国债年化收益率</label><input id="treasuryYield" type="number" value="0.02" step="0.001"></div>
           <div><label for="adjust">复权口径</label><select id="adjust"><option value="qfq">qfq 前复权</option></select></div>
         </div>
       </section>
 
       <section class="panel">
-        <h2>成本与风控</h2>
+        <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-5"/></svg></span>成本与风控</h2>
         <div class="grid2">
           <div><label for="buyCommission">买入佣金</label><input id="buyCommission" type="number" value="0.0003" step="0.0001"></div>
           <div><label for="sellCommission">卖出佣金</label><input id="sellCommission" type="number" value="0.0003" step="0.0001"></div>
@@ -215,40 +407,68 @@
         <div class="checkrow"><input id="enableStopLoss" type="checkbox" checked><span>启用单笔止损</span></div>
         <div class="checkrow"><input id="enableDrawdownStop" type="checkbox" checked><span>启用最大回撤停交易</span></div>
         <button id="runBtn">运行回测</button>
-        <div id="status" class="status"></div>
+        <div id="status" class="status" role="status" aria-live="polite"></div>
       </section>
     </aside>
 
     <section class="content">
+      <section class="contextbar" id="contextBar" aria-label="当前回测上下文"></section>
       <section class="panel">
-        <h2>核心结果</h2>
+        <div class="panel-head">
+          <div>
+            <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-4"/><path d="M7 9l5-4 5 7"/></svg></span>核心结果</h2>
+          </div>
+        </div>
         <div id="cards" class="cards"></div>
       </section>
       <section class="panel">
-        <h2>股票对比</h2>
+        <div class="panel-head">
+          <div>
+            <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/><path d="M8 4v16"/><path d="M16 4v16"/></svg></span>股票对比</h2>
+          </div>
+        </div>
         <div class="tablewrap"><table id="summaryTable"></table></div>
       </section>
       <section class="panel">
-        <h2>策略净值对比</h2>
+        <div class="panel-head">
+          <div>
+            <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16"/><path d="M5 15l4-4 3 3 6-8"/><path d="M5 10l4 2 3-4 6 3"/></svg></span>策略净值对比</h2>
+          </div>
+        </div>
         <canvas id="navChart"></canvas>
       </section>
       <section class="panel">
-        <h2>价格、双均线与买卖点</h2>
+        <div class="panel-head">
+          <div>
+            <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16"/><path d="M6 15c3-8 5 2 8-6s5-1 6-4"/><path d="M6 10h3"/><path d="M15 14h3"/></svg></span>价格、双均线与买卖点</h2>
+          </div>
+        </div>
         <canvas id="priceChart"></canvas>
       </section>
       <section class="panel">
-        <h2>交易明细</h2>
+        <div class="panel-head">
+          <div>
+            <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18H6z"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/></svg></span>交易明细</h2>
+          </div>
+        </div>
         <div class="tablewrap"><table id="tradesTable"></table></div>
       </section>
       <section class="panel">
-        <h2>风控事件</h2>
+        <div class="panel-head">
+          <div>
+            <h2><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 4-8 14L4 7l8-4z"/><path d="M12 8v5"/><path d="M12 17h.01"/></svg></span>风控事件</h2>
+          </div>
+        </div>
         <div class="tablewrap"><table id="riskTable"></table></div>
       </section>
     </section>
   </main>
 
   <script>
-    const BUILTIN = [{ symbol: '603986.SH', url: 'data/stocks/603986_SH_daily_qfq.csv' }];
+    const BUILTIN = [
+      { symbol: '603986.SH', url: 'data/stocks/603986_SH_daily_qfq.csv' },
+      { symbol: '601988.SH', url: 'data/stocks/601988_SH_daily_qfq.csv' }
+    ];
     const $ = id => document.getElementById(id);
     const colors = ['#2563eb', '#d92d20', '#039855', '#7c3aed', '#f59e0b', '#475467'];
 
@@ -278,6 +498,27 @@
       const decimals = Number.isInteger(d) && d >= 0 && d <= 20 ? d : 2;
       return Number.isFinite(v) ? v.toLocaleString(undefined, { maximumFractionDigits: decimals, minimumFractionDigits: decimals }) : '--';
     }
+    function fmtDate(v) {
+      const s = String(v || '').replace(/\D/g, '');
+      return s.length === 8 ? `${s.slice(0, 4)}.${s.slice(4, 6)}.${s.slice(6, 8)}` : '--';
+    }
+    function translateReason(v) {
+      return ({
+        golden_cross: '均线金叉',
+        death_cross: '均线死叉',
+        stop_loss: '单笔止损',
+        max_drawdown_stop: '最大回撤停交易',
+        end_of_backtest: '回测结束平仓'
+      })[v] || v || '--';
+    }
+    function translateStatus(v) {
+      return ({
+        ok: '正常',
+        executed: '已执行',
+        not_executed_no_next_day: '未执行：无下一交易日',
+        halted_no_position: '已停交易：无持仓'
+      })[v] || v || '--';
+    }
     function metricClass(value, inverse = false) {
       if (!Number.isFinite(value)) return 'info';
       const good = inverse ? value > -0.15 : value > 0;
@@ -286,7 +527,67 @@
       if (bad) return 'negative';
       return 'info';
     }
+    function metricMeter(value, fallback = 54) {
+      if (!Number.isFinite(value)) return fallback;
+      return Math.max(12, Math.min(100, Math.round(Math.abs(value) * 100)));
+    }
+    function iconSvg(name) {
+      const icons = {
+        trend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-9"/><path d="M14 6h6v6"/></svg>',
+        calendar: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v4"/><path d="M17 3v4"/><path d="M4 8h16"/><path d="M5 5h14v15H5z"/></svg>',
+        hold: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 19V5"/><path d="M18 19V5"/><path d="M6 7h12"/><path d="M6 17h12"/><path d="M9 11h6"/></svg>',
+        benchmark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18h16"/><path d="M7 15l3-4 3 2 4-7"/><path d="M6 6h4"/></svg>',
+        drawdown: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6 6 4-4 6 7"/><path d="M14 15h6v-6"/></svg>',
+        sharpe: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/><path d="M7 17l10-10"/></svg>',
+        win: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M5 5H3v2a4 4 0 0 0 4 4"/><path d="M19 5h2v2a4 4 0 0 1-4 4"/></svg>',
+        ratio: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><circle cx="7" cy="7" r="2"/><circle cx="17" cy="17" r="2"/></svg>',
+        clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v5l3 2"/></svg>',
+        shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 4v5c0 5-3 8-7 9-4-1-7-4-7-9V7z"/><path d="M9 12l2 2 4-5"/></svg>'
+      };
+      return icons[name] || icons.trend;
+    }
     function normSymbol(s) { return String(s || '').trim().toUpperCase(); }
+
+    function setStatus(message, tone = 'idle') {
+      $('status').textContent = message;
+      $('status').classList.toggle('is-loading', tone === 'loading');
+      $('status').classList.toggle('is-error', tone === 'error');
+      $('runBadge').textContent = tone === 'loading' ? '运行中' : tone === 'error' ? '异常' : message ? '已完成' : '待运行';
+    }
+
+    function updateSourceFields() {
+      const source = $('dataSource').value;
+      $('builtinFields').classList.toggle('active', source === 'builtin');
+      $('workerFields').classList.toggle('active', source === 'worker');
+      $('uploadFields').classList.toggle('active', source === 'upload');
+    }
+
+    function sourceLabel() {
+      return ({
+        builtin: '内置前复权 CSV',
+        worker: 'Cloudflare Worker 实时获取',
+        upload: '上传 CSV'
+      })[$('dataSource').value] || '未知数据源';
+    }
+
+    function renderContext(best, results) {
+      const okCount = results.filter(r => r.summary.status === 'ok').length;
+      const items = [
+        ['hold', '数据来源', sourceLabel()],
+        ['calendar', '回测区间', best ? `${fmtDate(best.summary.start_date)} 至 ${fmtDate(best.summary.end_date)}` : '--'],
+        ['ratio', '标的数量', `${results.length} 支 / 成功 ${okCount} 支`],
+        ['benchmark', '国债基准', best ? fmtPct(best.summary.treasury_return) : fmtPct(Number($('treasuryYield').value))]
+      ];
+      $('contextBar').innerHTML = items.map(([icon, label, value]) => `
+        <div class="context-item">
+          <span class="metric-icon" aria-hidden="true">${iconSvg(icon)}</span>
+          <div>
+          <div class="label">${label}</div>
+          <div class="value">${value}</div>
+          </div>
+        </div>
+      `).join('');
+    }
 
     function readParams() {
       const p = {
@@ -295,6 +596,7 @@
         fastWindow: Number($('fastWindow').value),
         slowWindow: Number($('slowWindow').value),
         initialCash: Number($('initialCash').value),
+        treasuryAnnualYield: Number($('treasuryYield').value),
         buyCommission: Number($('buyCommission').value),
         sellCommission: Number($('sellCommission').value),
         stampTax: Number($('stampTax').value),
@@ -307,6 +609,7 @@
       };
       if (!(p.fastWindow > 0 && p.slowWindow > p.fastWindow)) throw new Error('均线参数必须满足：短均线 > 0 且短均线 < 长均线');
       if (!(p.initialCash > 0)) throw new Error('初始资金必须大于 0');
+      if (!Number.isFinite(p.treasuryAnnualYield)) throw new Error('国债年化收益率必须是数字');
       for (const k of ['buyCommission', 'sellCommission', 'stampTax', 'buySlippage', 'sellSlippage']) {
         if (p[k] < 0) throw new Error('成本和滑点不能为负数');
       }
@@ -412,11 +715,12 @@
         const totalAsset = cash + positionValue;
         const nav = totalAsset / p.initialCash;
         const buyHoldNav = buyHoldShares * r.close / p.initialCash;
+        const treasuryNav = (1 + p.treasuryAnnualYield) ** ((i + 1) / 252);
         equityPeak = Math.max(equityPeak, nav);
         const drawdown = nav / equityPeak - 1;
         equity.push({
           trade_date: r.trade_date, position: shares, is_halted: halted, cash, position_value: positionValue,
-          total_asset: totalAsset, strategy_nav: nav, buy_hold_nav: buyHoldNav, drawdown,
+          total_asset: totalAsset, strategy_nav: nav, buy_hold_nav: buyHoldNav, treasury_nav: treasuryNav, drawdown,
           ma_fast: fast[i], ma_slow: slow[i], close: r.close
         });
         const nextExists = i < rows.length - 1;
@@ -460,16 +764,20 @@
       const avgLoss = losses.length ? Math.abs(losses.reduce((s, t) => s + t.net_return, 0) / losses.length) : 0;
       const totalReturn = navs.at(-1) - 1;
       const years = navs.length / 252;
+      const treasuryReturn = (1 + p.treasuryAnnualYield) ** years - 1;
+      const stopLossCount = trades.filter(t => t.exit_reason === 'stop_loss').length;
+      const drawdownStopTriggered = risks.some(r => r.event_type === 'max_drawdown_stop');
       return {
         symbol, rows, equity, trades, risks,
         summary: {
           ts_code: symbol, status: 'ok', adjust: 'qfq', start_date: rows[0].trade_date, end_date: rows.at(-1).trade_date,
-          strategy_return: totalReturn, buy_hold_return: buyHold.at(-1) - 1, excess_return: navs.at(-1) - buyHold.at(-1),
+          strategy_return: totalReturn, treasury_return: treasuryReturn, buy_hold_return: buyHold.at(-1) - 1, excess_return: totalReturn - treasuryReturn,
           annual_return: (1 + totalReturn) ** (1 / years) - 1, max_drawdown: maxDrawdown(navs), sharpe: sharpe(navs),
           win_rate: trades.length ? wins.length / trades.length : 0, trade_count: trades.length,
           payoff: avgLoss ? avgWin / avgLoss : null, avg_holding_days: trades.length ? trades.reduce((s, t) => s + t.holding_days, 0) / trades.length : 0,
-          stop_loss_count: trades.filter(t => t.exit_reason === 'stop_loss').length,
-          drawdown_stop_triggered: risks.some(r => r.event_type === 'max_drawdown_stop')
+          stop_loss_count: stopLossCount,
+          drawdown_stop_triggered: drawdownStopTriggered,
+          risk_triggered: stopLossCount > 0 || drawdownStopTriggered
         }
       };
     }
@@ -498,20 +806,20 @@
         if (!Array.isArray(payload.data)) throw new Error('Worker 返回格式无效');
         payload.data.forEach(item => sets.push({ symbol: normSymbol(item.symbol), rows: item.rows || [] }));
       }
-      if (source === 'builtin' && $('useBuiltIn').checked) {
+      if (source === 'builtin') {
         for (const item of BUILTIN) {
           const text = await fetch(item.url).then(r => {
             if (!r.ok) throw new Error(`无法读取内置数据：${item.url}`);
             return r.text();
           });
-          sets.push({ symbol: item.symbol, rows: parseCsv(text) });
+          sets.push({ symbol: item.symbol, rows: parseCsv(text), source: 'builtin' });
         }
       }
       if (source === 'upload') for (const file of $('uploadCsv').files) {
         const text = await file.text();
         const rows = parseCsv(text);
         const symbol = normSymbol(rows[0]?.ts_code || file.name.replace(/_daily.*\.csv$/i, '').replace('_', '.'));
-        sets.push({ symbol, rows });
+        sets.push({ symbol, rows, source: 'upload' });
       }
       if (!sets.length) throw new Error('请选择数据来源，并提供股票代码或 CSV');
       return sets;
@@ -524,12 +832,15 @@
         '</tbody>';
     }
 
-    function drawLine(canvas, title, datasets) {
+    function drawLine(canvas, title, datasets, labels = []) {
       const dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
       canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
       const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      const w = rect.width, h = rect.height, pad = { l: 58, r: 18, t: 34, b: 34 };
-      ctx.clearRect(0, 0, w, h); ctx.font = '12px "Microsoft YaHei", Arial'; ctx.fillStyle = '#182230'; ctx.fillText(title, pad.l, 20);
+      const w = rect.width, h = rect.height, pad = { l: 58, r: 18, t: 58, b: 48 };
+      ctx.clearRect(0, 0, w, h);
+      ctx.font = '12px "Microsoft YaHei", Arial';
+      ctx.fillStyle = '#182230';
+      ctx.fillText(title, pad.l, 22);
       const vals = datasets.flatMap(d => d.values.filter(Number.isFinite));
       let min = Math.min(...vals), max = Math.max(...vals); if (min === max) { min -= 1; max += 1; }
       const ypad = (max - min) * .05; min -= ypad; max += ypad;
@@ -540,80 +851,151 @@
         ctx.beginPath(); ctx.moveTo(area.x, y); ctx.lineTo(area.x + area.w, y); ctx.stroke();
         ctx.fillStyle = '#667085'; ctx.fillText(v.toFixed(2), 6, y + 4);
       }
+      ctx.strokeStyle = '#d0d5dd';
+      ctx.beginPath();
+      ctx.moveTo(area.x, area.y + area.h);
+      ctx.lineTo(area.x + area.w, area.y + area.h);
+      ctx.stroke();
+      const labelSource = labels.length ? labels : datasets[0].values.map((_, i) => String(i + 1));
+      const tickCount = Math.min(5, labelSource.length);
+      ctx.fillStyle = '#667085';
+      ctx.textAlign = 'center';
+      for (let i = 0; i < tickCount; i++) {
+        const idx = tickCount === 1 ? 0 : Math.round(i * (labelSource.length - 1) / (tickCount - 1));
+        const x = area.x + area.w * idx / Math.max(1, labelSource.length - 1);
+        ctx.fillText(fmtDate(labelSource[idx]), x, h - 16);
+      }
+      ctx.textAlign = 'left';
+      let lx = pad.l, ly = 40;
+      const markerLegend = datasets.find(d => d.markerLegend)?.markerLegend || [];
+      const drawTriangle = (x, y, size, direction, color) => {
+        const half = size / 2;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        if (direction === 'down') {
+          ctx.moveTo(x, y + half);
+          ctx.lineTo(x - half, y - half);
+          ctx.lineTo(x + half, y - half);
+        } else {
+          ctx.moveTo(x, y - half);
+          ctx.lineTo(x - half, y + half);
+          ctx.lineTo(x + half, y + half);
+        }
+        ctx.closePath();
+        ctx.fill();
+      };
+      datasets.forEach((d, di) => {
+        const color = d.color || colors[di % colors.length];
+        ctx.strokeStyle = color; ctx.lineWidth = d.width || 2;
+        ctx.beginPath(); ctx.moveTo(lx, ly - 4); ctx.lineTo(lx + 22, ly - 4); ctx.stroke();
+        ctx.fillStyle = color; ctx.fillRect(lx + 8, ly - 8, 6, 6);
+        ctx.fillStyle = '#344054'; ctx.fillText(d.name, lx + 28, ly);
+        lx += Math.max(96, ctx.measureText(d.name).width + 52);
+        if (lx > w - 150) { lx = pad.l; ly += 16; }
+      });
+      markerLegend.forEach(item => {
+        drawTriangle(lx + 10, ly - 5, 12, item.direction, item.color);
+        ctx.fillStyle = '#344054';
+        ctx.fillText(item.name, lx + 26, ly);
+        lx += Math.max(72, ctx.measureText(item.name).width + 44);
+        if (lx > w - 120) { lx = pad.l; ly += 16; }
+      });
       datasets.forEach((d, di) => {
         ctx.strokeStyle = d.color || colors[di % colors.length]; ctx.lineWidth = d.width || 2; ctx.beginPath();
+        let started = false;
         d.values.forEach((v, i) => {
-          if (!Number.isFinite(v)) return;
+          if (!Number.isFinite(v)) { started = false; return; }
           const x = area.x + area.w * i / Math.max(1, d.values.length - 1);
           const y = area.y + (max - v) / (max - min) * area.h;
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+          if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
         });
         ctx.stroke();
-        ctx.fillStyle = ctx.strokeStyle; ctx.fillText(d.name, area.x + di * 110, h - 10);
       });
       const markers = datasets.find(d => d.markers)?.markers || [];
       markers.forEach(m => {
         if (!Number.isFinite(m.value)) return;
         const x = area.x + area.w * m.index / Math.max(1, datasets[0].values.length - 1);
         const y = area.y + (max - m.value) / (max - min) * area.h;
-        ctx.fillStyle = m.color; ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillText(m.label, x + 7, y - 7);
+        drawTriangle(x, y, 12, m.direction || 'up', m.color);
       });
     }
 
     function render(results) {
       const ok = results.filter(r => r.summary.status === 'ok');
       const best = ok.slice().sort((a, b) => b.summary.strategy_return - a.summary.strategy_return)[0];
+      renderContext(best, results);
       $('cards').innerHTML = best ? [
-        { k: '策略累计收益', v: fmtPct(best.summary.strategy_return), s: best.symbol, cls: metricClass(best.summary.strategy_return) },
-        { k: '策略年化收益', v: fmtPct(best.summary.annual_return), s: '按 252 个交易日年化', cls: metricClass(best.summary.annual_return) },
-        { k: '买入持有收益', v: fmtPct(best.summary.buy_hold_return), s: '同期基准表现', cls: metricClass(best.summary.buy_hold_return) },
-        { k: '超额收益', v: fmtPct(best.summary.excess_return), s: '策略相对买入持有', cls: metricClass(best.summary.excess_return) },
-        { k: '最大回撤', v: fmtPct(best.summary.max_drawdown), s: '净值高点回撤', cls: metricClass(best.summary.max_drawdown, true) },
-        { k: '夏普比率', v: fmtNum(best.summary.sharpe, 3), s: '日收益年化波动调整', cls: metricClass(best.summary.sharpe) },
-        { k: '胜率', v: fmtPct(best.summary.win_rate), s: `${best.summary.trade_count} 笔交易`, cls: metricClass(best.summary.win_rate - 0.5) },
-        { k: '盈亏比', v: fmtNum(best.summary.payoff, 2), s: '平均盈利 / 平均亏损', cls: metricClass(Number.isFinite(best.summary.payoff) ? best.summary.payoff - 1 : null) },
-        { k: '平均持有天数', v: fmtNum(best.summary.avg_holding_days, 1), s: '单笔交易周期', cls: 'info' },
-        { k: '风控状态', v: best.summary.drawdown_stop_triggered ? '已触发' : '未触发', s: `止损 ${best.summary.stop_loss_count} 次`, cls: best.summary.drawdown_stop_triggered ? 'warn' : 'positive' }
-      ].map(m => `<div class="card ${m.cls}"><div class="k">${m.k}</div><div class="v">${m.v}</div><div class="s">${m.s}</div></div>`).join('') : '';
+        { k: '策略累计收益', icon: 'trend', v: fmtPct(best.summary.strategy_return), s: best.symbol, cls: metricClass(best.summary.strategy_return), m: metricMeter(best.summary.strategy_return) },
+        { k: '策略年化收益', icon: 'calendar', v: fmtPct(best.summary.annual_return), s: '按 252 个交易日年化', cls: metricClass(best.summary.annual_return), m: metricMeter(best.summary.annual_return) },
+        { k: '买入持有收益', icon: 'hold', v: fmtPct(best.summary.buy_hold_return), s: '同期持有标的表现', cls: metricClass(best.summary.buy_hold_return), m: metricMeter(best.summary.buy_hold_return) },
+        { k: '超额收益率', icon: 'benchmark', v: fmtPct(best.summary.excess_return), s: `相对国债 ${fmtPct(best.summary.treasury_return)}`, cls: metricClass(best.summary.excess_return), m: metricMeter(best.summary.excess_return) },
+        { k: '最大回撤', icon: 'drawdown', v: fmtPct(best.summary.max_drawdown), s: '净值高点回撤', cls: metricClass(best.summary.max_drawdown, true), m: metricMeter(best.summary.max_drawdown) },
+        { k: '夏普比率', icon: 'sharpe', v: fmtNum(best.summary.sharpe, 3), s: '日收益年化波动调整', cls: metricClass(best.summary.sharpe), m: metricMeter(best.summary.sharpe / 2) },
+        { k: '胜率', icon: 'win', v: fmtPct(best.summary.win_rate), s: `${best.summary.trade_count} 笔交易`, cls: metricClass(best.summary.win_rate - 0.5), m: metricMeter(best.summary.win_rate) },
+        { k: '盈亏比', icon: 'ratio', v: fmtNum(best.summary.payoff, 2), s: '平均盈利 / 平均亏损', cls: metricClass(Number.isFinite(best.summary.payoff) ? best.summary.payoff - 1 : null), m: metricMeter(Number.isFinite(best.summary.payoff) ? best.summary.payoff / 4 : null) },
+        { k: '平均持有天数', icon: 'clock', v: fmtNum(best.summary.avg_holding_days, 1), s: '单笔交易周期', cls: 'info', m: metricMeter(best.summary.avg_holding_days / 80) },
+        { k: '风控状态', icon: 'shield', v: best.summary.risk_triggered ? '已触发' : '未触发', s: `止损 ${best.summary.stop_loss_count} 次 / 回撤停交易 ${best.summary.drawdown_stop_triggered ? '是' : '否'}`, cls: best.summary.risk_triggered ? 'warn' : 'positive', m: best.summary.risk_triggered ? 86 : 28 }
+      ].map(m => `<div class="card ${m.cls}" style="--meter:${m.m}%"><div class="metric-top"><span class="metric-icon" aria-hidden="true">${iconSvg(m.icon)}</span><div class="k">${m.k}</div></div><div class="v">${m.v}</div><div class="s">${m.s}</div><div class="meter"><span></span></div></div>`).join('') : '';
       table($('summaryTable'), results.map(r => r.summary), [
-        { key: 'ts_code', label: '股票' }, { key: 'status', label: '状态' }, { key: 'strategy_return', label: '策略收益', format: fmtPct },
-        { key: 'annual_return', label: '年化收益', format: fmtPct }, { key: 'buy_hold_return', label: '持有收益', format: fmtPct },
-        { key: 'excess_return', label: '超额收益', format: fmtPct }, { key: 'max_drawdown', label: '最大回撤', format: fmtPct },
+        { key: 'ts_code', label: '股票' }, { key: 'status', label: '状态', format: translateStatus },
+        { key: 'start_date', label: '开始日', format: fmtDate }, { key: 'end_date', label: '结束日', format: fmtDate },
+        { key: 'strategy_return', label: '策略收益', format: fmtPct },
+        { key: 'annual_return', label: '年化收益', format: fmtPct }, { key: 'treasury_return', label: '国债同期收益', format: fmtPct },
+        { key: 'excess_return', label: '超额收益率', format: fmtPct }, { key: 'buy_hold_return', label: '买入持有收益', format: fmtPct },
+        { key: 'max_drawdown', label: '最大回撤', format: fmtPct },
         { key: 'sharpe', label: '夏普', format: v => fmtNum(v, 3) }, { key: 'win_rate', label: '胜率', format: fmtPct },
         { key: 'payoff', label: '盈亏比', format: v => fmtNum(v, 2) }, { key: 'avg_holding_days', label: '平均持有天数', format: v => fmtNum(v, 1) },
         { key: 'trade_count', label: '交易数' }, { key: 'stop_loss_count', label: '止损数' },
+        { key: 'risk_triggered', label: '风控触发', format: v => v ? '是' : '否' },
         { key: 'drawdown_stop_triggered', label: '回撤停交易', format: v => v ? '是' : '否' }
       ]);
       if (ok.length) {
-        drawLine($('navChart'), '策略净值对比', ok.map(r => ({ name: r.symbol, values: r.equity.map(e => e.strategy_nav) })));
-        const first = ok[0], closeByDate = new Map(first.equity.map((e, i) => [e.trade_date, { i, close: e.close }]));
+        const first = ok[0], dates = first.equity.map(e => e.trade_date);
+        const navSets = ok.map(r => ({ name: `${r.symbol} 策略净值`, values: r.equity.map(e => e.strategy_nav) }));
+        navSets.push({ name: `${first.symbol} 买入持有`, values: first.equity.map(e => e.buy_hold_nav), color: '#475467', width: 2 });
+        drawLine($('navChart'), '策略净值对比', navSets, dates);
+        const closeByDate = new Map(first.equity.map((e, i) => [e.trade_date, { i, close: e.close }]));
         const markers = [];
         first.trades.forEach(t => {
           const ent = closeByDate.get(t.entry_date), ext = closeByDate.get(t.exit_date);
-          if (ent) markers.push({ index: ent.i, value: ent.close, color: '#d92d20', label: 'BUY' });
-          if (ext) markers.push({ index: ext.i, value: ext.close, color: t.exit_reason.includes('stop') ? '#dc6803' : '#039855', label: t.exit_reason.includes('stop') ? 'RISK' : 'SELL' });
+          if (ent) markers.push({ index: ent.i, value: ent.close, color: '#d92d20', label: '买入', direction: 'down' });
+          if (ext) markers.push({ index: ext.i, value: ext.close, color: '#039855', label: '卖出', direction: 'up' });
         });
         drawLine($('priceChart'), `${first.symbol} 价格与双均线`, [
-          { name: '收盘价', values: first.equity.map(e => e.close), color: '#182230', markers },
-          { name: 'MA快线', values: first.equity.map(e => e.ma_fast), color: '#f59e0b' },
-          { name: 'MA慢线', values: first.equity.map(e => e.ma_slow), color: '#2563eb' }
-        ]);
+          {
+            name: '收盘价',
+            values: first.equity.map(e => e.close),
+            color: '#111827',
+            width: 2,
+            markers,
+            markerLegend: [
+              { name: '买入', color: '#d92d20', direction: 'down' },
+              { name: '卖出', color: '#039855', direction: 'up' }
+            ]
+          },
+          { name: 'MA快线', values: first.equity.map(e => e.ma_fast), color: '#f59e0b', width: 2 },
+          { name: 'MA慢线', values: first.equity.map(e => e.ma_slow), color: '#2563eb', width: 2 }
+        ], dates);
         table($('tradesTable'), first.trades, [
-          { key: 'entry_date', label: '买入日' }, { key: 'exit_date', label: '卖出日' }, { key: 'exit_reason', label: '原因' },
+          { key: 'entry_date', label: '买入日', format: fmtDate }, { key: 'exit_date', label: '卖出日', format: fmtDate },
+          { key: 'exit_reason', label: '原因', format: translateReason },
           { key: 'entry_price', label: '买入价', format: fmtNum }, { key: 'exit_price', label: '卖出价', format: fmtNum },
           { key: 'holding_days', label: '持有天数' }, { key: 'net_return', label: '净收益', format: fmtPct }, { key: 'total_cost', label: '成本', format: fmtNum }
         ]);
         table($('riskTable'), first.risks, [
-          { key: 'event_date', label: '触发日' }, { key: 'event_type', label: '类型' }, { key: 'trigger_value', label: '触发值', format: fmtPct },
-          { key: 'threshold', label: '阈值', format: fmtPct }, { key: 'execution_date', label: '执行日' }, { key: 'execution_price', label: '执行价', format: fmtNum }, { key: 'status', label: '状态' }
+          { key: 'event_date', label: '触发日', format: fmtDate }, { key: 'event_type', label: '类型', format: translateReason },
+          { key: 'trigger_value', label: '触发值', format: fmtPct },
+          { key: 'threshold', label: '阈值', format: fmtPct }, { key: 'execution_date', label: '执行日', format: fmtDate },
+          { key: 'execution_price', label: '执行价', format: fmtNum }, { key: 'status', label: '状态', format: translateStatus }
         ]);
       }
     }
 
     $('runBtn').addEventListener('click', async () => {
       try {
-        $('status').textContent = '正在读取数据并回测...';
+        $('runBtn').disabled = true;
+        $('runBtn').textContent = '回测运行中...';
+        setStatus(`正在读取数据并回测... 数据来源：${sourceLabel()}`, 'loading');
         const params = readParams();
         const sets = await loadDataSets();
         const results = sets.map(set => {
@@ -621,11 +1003,16 @@
           catch (err) { return { symbol: set.symbol, summary: { ts_code: set.symbol, status: err.message } }; }
         });
         render(results);
-        $('status').textContent = `完成：${results.length} 支股票，${results.filter(r => r.summary.status === 'ok').length} 支成功。`;
+        setStatus(`完成：${results.length} 支股票，${results.filter(r => r.summary.status === 'ok').length} 支成功。数据来源：${sourceLabel()}。`, 'done');
       } catch (err) {
-        $('status').textContent = `错误：${err.message}`;
+        setStatus(`错误：${err.message}`, 'error');
+      } finally {
+        $('runBtn').disabled = false;
+        $('runBtn').textContent = '运行回测';
       }
     });
+    $('dataSource').addEventListener('change', updateSourceFields);
+    updateSourceFields();
     window.addEventListener('resize', () => $('runBtn').click());
     $('runBtn').click();
   </script>
