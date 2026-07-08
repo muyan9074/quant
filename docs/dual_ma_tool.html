@@ -804,7 +804,18 @@
           return body;
         });
         if (!Array.isArray(payload.data)) throw new Error('Worker 返回格式无效');
-        payload.data.forEach(item => sets.push({ symbol: normSymbol(item.symbol), rows: item.rows || [] }));
+        payload.data.forEach(item => {
+          const rows = Array.isArray(item.rows) ? item.rows : [];
+          sets.push({
+            symbol: normSymbol(item.symbol),
+            rows,
+            source: 'worker',
+            fetchStatus: item.status || (rows.length ? 'ok' : 'error'),
+            fetchError: item.error || '',
+            adjust: item.adjust || $('adjust').value || 'qfq',
+            warnings: item.warnings || []
+          });
+        });
       }
       if (source === 'builtin') {
         for (const item of BUILTIN) {
@@ -830,6 +841,18 @@
       el.innerHTML = '<thead><tr>' + cols.map(c => `<th>${c.label}</th>`).join('') + '</tr></thead><tbody>' +
         rows.map(r => '<tr>' + cols.map(c => `<td>${c.format ? c.format(r[c.key], r) : (r[c.key] ?? '')}</td>`).join('') + '</tr>').join('') +
         '</tbody>';
+    }
+
+    function clearChart(canvas, message = 'No data') {
+      const dpr = window.devicePixelRatio || 1, rect = canvas.getBoundingClientRect();
+      canvas.width = Math.floor(rect.width * dpr); canvas.height = Math.floor(rect.height * dpr);
+      const ctx = canvas.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, rect.width, rect.height);
+      ctx.fillStyle = '#64748b';
+      ctx.font = '13px "Microsoft YaHei", Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(message, rect.width / 2, rect.height / 2);
+      ctx.textAlign = 'left';
     }
 
     function drawLine(canvas, title, datasets, labels = []) {
@@ -949,6 +972,13 @@
         { key: 'risk_triggered', label: '风控触发', format: v => v ? '是' : '否' },
         { key: 'drawdown_stop_triggered', label: '回撤停交易', format: v => v ? '是' : '否' }
       ]);
+      if (!ok.length) {
+        clearChart($('navChart'), 'No successful backtest data');
+        clearChart($('priceChart'), 'No successful backtest data');
+        table($('tradesTable'), [], []);
+        table($('riskTable'), [], []);
+        return;
+      }
       if (ok.length) {
         const first = ok[0], dates = first.equity.map(e => e.trade_date);
         const navSets = ok.map(r => ({ name: `${r.symbol} 策略净值`, values: r.equity.map(e => e.strategy_nav) }));
@@ -999,6 +1029,12 @@
         const params = readParams();
         const sets = await loadDataSets();
         const results = sets.map(set => {
+          if (set.fetchStatus && set.fetchStatus !== 'ok') {
+            return { symbol: set.symbol, summary: { ts_code: set.symbol, status: set.fetchError || `Worker ${set.fetchStatus}` } };
+          }
+          if (!Array.isArray(set.rows) || !set.rows.length) {
+            return { symbol: set.symbol, summary: { ts_code: set.symbol, status: 'Worker returned no rows' } };
+          }
           try { return runBacktest(set.symbol, set.rows, params); }
           catch (err) { return { symbol: set.symbol, summary: { ts_code: set.symbol, status: err.message } }; }
         });

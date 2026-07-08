@@ -1,6 +1,7 @@
 const TUSHARE_API = "https://api.tushare.pro";
 const DEFAULT_LOOKBACK_DAYS = 365;
 const MAX_SYMBOLS = 20;
+const CACHE_TTL_SECONDS = 3600;
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -13,6 +14,22 @@ function json(data, status = 200) {
       "cache-control": "no-store",
     },
   });
+}
+
+function cacheKey(url) {
+  return new Request(url.toString(), { method: "GET" });
+}
+
+async function cachedJson(requestUrl, loader) {
+  const cache = caches.default;
+  const key = cacheKey(requestUrl);
+  const cached = await cache.match(key);
+  if (cached) return cached;
+
+  const response = json(await loader());
+  response.headers.set("cache-control", `public, max-age=${CACHE_TTL_SECONDS}`);
+  await cache.put(key, response.clone());
+  return response;
 }
 
 function yyyymmdd(date) {
@@ -61,6 +78,10 @@ async function callTushare(env, apiName, params, fields) {
   return items.map((row) => Object.fromEntries(columns.map((field, i) => [field, row[i]])));
 }
 
+function isAdjFactorRateLimit(err) {
+  return /adj_factor|频率超限|限频|frequency/i.test(String(err?.message || err));
+}
+
 function applyAdjustment(dailyRows, factorRows, adjust) {
   const factorByDate = new Map(factorRows.map((r) => [String(r.trade_date), Number(r.adj_factor)]));
   const sorted = dailyRows
@@ -103,10 +124,23 @@ async function loadSymbol(env, symbol, startDate, endDate, adjust) {
     "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount",
   );
   if (adjust === "none") {
-    return daily.sort((a, b) => String(a.trade_date).localeCompare(String(b.trade_date)));
+    return {
+      rows: daily.sort((a, b) => String(a.trade_date).localeCompare(String(b.trade_date))),
+      adjust: "none",
+      warnings: [],
+    };
   }
-  const factors = await callTushare(env, "adj_factor", params, "ts_code,trade_date,adj_factor");
-  return applyAdjustment(daily, factors, adjust);
+  try {
+    const factors = await callTushare(env, "adj_factor", params, "ts_code,trade_date,adj_factor");
+    return { rows: applyAdjustment(daily, factors, adjust), adjust, warnings: [] };
+  } catch (err) {
+    if (!isAdjFactorRateLimit(err)) throw err;
+    return {
+      rows: daily.sort((a, b) => String(a.trade_date).localeCompare(String(b.trade_date))),
+      adjust: "none",
+      warnings: [`adj_factor unavailable: ${err.message}. Returned unadjusted daily data.`],
+    };
+  }
 }
 
 async function handleDaily(request, env) {
@@ -128,8 +162,17 @@ async function handleDaily(request, env) {
   const data = [];
   for (const symbol of symbols) {
     try {
-      const rows = await loadSymbol(env, symbol, startDate, endDate, adjust);
-      data.push({ symbol, rows, status: "ok", adjust, start_date: startDate, end_date: endDate });
+      const result = await loadSymbol(env, symbol, startDate, endDate, adjust);
+      data.push({
+        symbol,
+        rows: result.rows,
+        status: "ok",
+        adjust: result.adjust,
+        requested_adjust: adjust,
+        warnings: result.warnings,
+        start_date: startDate,
+        end_date: endDate,
+      });
     } catch (err) {
       data.push({ symbol, rows: [], status: "error", error: err.message });
     }
@@ -144,6 +187,9 @@ export default {
     try {
       if (url.pathname === "/" || url.pathname === "/health") {
         return json({ ok: true, service: "tushare-proxy" });
+      }
+      if (url.pathname === "/daily" && request.method === "GET") {
+        return cachedJson(url, () => handleDaily(request, env).then((res) => res.json()));
       }
       if (url.pathname === "/daily") return handleDaily(request, env);
       return json({ error: "Not found" }, 404);
