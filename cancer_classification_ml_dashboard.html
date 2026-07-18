@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>乳腺肿瘤二分类建模成果展示</title>
+  <style>
+    :root {
+      --bg: #f4f7f6;
+      --panel: #ffffff;
+      --ink: #10201c;
+      --muted: #60736d;
+      --line: #d9e4e0;
+      --green: #0f766e;
+      --blue: #2563eb;
+      --rose: #be123c;
+      --amber: #b7791f;
+      --violet: #6d28d9;
+      --shadow: 0 16px 36px rgba(16, 32, 28, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, rgba(15,118,110,.12), transparent 38%),
+        linear-gradient(315deg, rgba(190,18,60,.08), transparent 42%),
+        var(--bg);
+      font: 14px/1.55 "Microsoft YaHei", "Segoe UI", Arial, sans-serif;
+    }
+    a { color: inherit; }
+    .shell { max-width: 1380px; margin: 0 auto; padding: 24px 18px 18px; }
+    header { margin-bottom: 14px; }
+    .hero, .panel {
+      background: rgba(255,255,255,.92);
+      border: 1px solid rgba(217,228,224,.85);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+    .hero { padding: 34px 38px 28px; }
+    .eyebrow { color: var(--green); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+    h1 { margin: 8px 0 10px; font-size: clamp(28px, 4vw, 48px); line-height: 1.05; letter-spacing: 0; }
+    .lead { max-width: 1180px; color: #40554f; font-size: 17px; margin: 0; }
+    .hero-model {
+      display: grid;
+      grid-template-columns: minmax(280px, .85fr) minmax(0, 1.45fr);
+      gap: 14px;
+      margin-top: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, #fbfdfc, #ffffff);
+      padding: 14px;
+    }
+    .hero-model-intro {
+      min-height: 178px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border-radius: 8px;
+      padding: 20px;
+      color: #fff;
+      background: linear-gradient(135deg, #0f766e, #1d4ed8);
+    }
+    .hero-model-intro .label { color: rgba(255,255,255,.78); }
+    .hero-model-intro .model-name { color: #fff; font-size: 31px; }
+    .hero-model-note { margin: 10px 0 0; color: rgba(255,255,255,.84); font-size: 14px; }
+    .hero-model-body {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+    }
+    .model-name { margin-top: 4px; font-size: 26px; line-height: 1.15; font-weight: 900; }
+    .model-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .model-stat, .metric {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 12px;
+      min-width: 0;
+    }
+    .model-stat { min-height: 96px; }
+    .model-stat .value { font-size: 26px; }
+    .label { color: var(--muted); font-size: 12px; font-weight: 700; }
+    .value { margin-top: 4px; font-size: 22px; font-weight: 850; }
+    .badge-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { border: 1px solid var(--line); background: #f8fbfa; border-radius: 999px; padding: 5px 10px; font-size: 12px; color: #344842; font-weight: 700; }
+    .grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: 14px; }
+    .panel { padding: 16px; min-width: 0; }
+    .panel-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+    h2 { margin: 0; font-size: 18px; line-height: 1.2; letter-spacing: 0; }
+    .hint { color: var(--muted); font-size: 12px; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .metric .value { font-size: 25px; }
+    .metric.best { border-color: rgba(15,118,110,.35); background: #f1faf8; }
+    .metric.warn { border-color: rgba(183,121,31,.35); background: #fffaf0; }
+    .table-wrap { overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 13px; }
+    th, td { padding: 10px 11px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+    th:first-child, td:first-child { text-align: left; }
+    th { color: var(--muted); background: #f7faf9; font-weight: 800; }
+    tr:last-child td { border-bottom: 0; }
+    .bars { display: grid; gap: 10px; }
+    .bar-row { display: grid; grid-template-columns: 130px 1fr 58px; gap: 10px; align-items: center; }
+    .track { height: 10px; border-radius: 999px; background: #e7eeee; overflow: hidden; }
+    .bar { height: 100%; border-radius: inherit; background: var(--green); }
+    .bar.blue { background: var(--blue); }
+    .bar.amber { background: var(--amber); }
+    .bar.violet { background: var(--violet); }
+    .chart-img {
+      width: 100%;
+      display: block;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .wide-card { grid-column: 1 / -1; }
+    .correlation-img { max-height: none; }
+    .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .insight-list { margin: 0; padding-left: 18px; color: #344842; }
+    .insight-list li { margin: 8px 0; }
+    .tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+    .tab {
+      border: 1px solid var(--line);
+      background: #fff;
+      color: #344842;
+      border-radius: 999px;
+      padding: 7px 12px;
+      font: inherit;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .tab[aria-selected="true"] { background: var(--ink); color: white; border-color: var(--ink); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    footer { color: var(--muted); text-align: center; padding: 18px 0 6px; font-size: 12px; }
+    @media (max-width: 1060px) {
+      .grid, .two-col { grid-template-columns: 1fr; }
+      .hero-model { grid-template-columns: 1fr; }
+      .model-grid, .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 640px) {
+      .shell { padding: 10px; }
+      .hero { padding: 18px; }
+      .model-grid, .metrics { grid-template-columns: 1fr; }
+      .bar-row { grid-template-columns: 1fr; gap: 5px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <section class="hero">
+        <div>
+          <div class="eyebrow">Machine Learning Classification Notebook</div>
+          <h1>乳腺肿瘤细胞核特征二分类建模成果展示</h1>
+          <p class="lead">基于 <strong>569</strong> 条细胞核特征样本，完成从数据探索、VIF 共线性检查、四类模型训练、ROC-AUC 对比到最佳模型调优和解释性分析的完整实验闭环。</p>
+        </div>
+        <div class="hero-model">
+          <div class="hero-model-intro">
+            <div>
+              <div class="label">最佳线性模型</div>
+              <div class="model-name">Logistic Regression</div>
+              <p class="hero-model-note">测试集 ROC-AUC 0.9954，调优后参数保持 C=1、L2 penalty。作为线性基线，它在本数据集上已经达到最高 AUC。</p>
+            </div>
+            <div class="badge-row" aria-label="核心结论标签">
+              <span class="badge">Best AUC</span>
+              <span class="badge">Tuned LR</span>
+            </div>
+          </div>
+          <div class="hero-model-body">
+            <div class="badge-row" aria-label="建模要点标签">
+              <span class="badge">80/20 stratify</span>
+              <span class="badge">StandardScaler</span>
+              <span class="badge">VIF 分析</span>
+              <span class="badge">GridSearchCV</span>
+              <span class="badge">Permutation Importance</span>
+            </div>
+            <div class="model-grid">
+              <div class="model-stat"><div class="label">ROC-AUC（恶性）</div><div class="value">0.9954</div><div class="hint">测试集</div></div>
+              <div class="model-stat"><div class="label">Accuracy</div><div class="value">97.37%</div><div class="hint">整体分类正确率</div></div>
+              <div class="model-stat"><div class="label">Recall（恶性）</div><div class="value">97.62%</div><div class="hint">识别恶性样本能力</div></div>
+              <div class="model-stat"><div class="label">Precision（恶性）</div><div class="value">95.35%</div><div class="hint">恶性预测精确度</div></div>
+              <div class="model-stat"><div class="label">最佳参数</div><div class="value">C=1</div><div class="hint">penalty=L2</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <main class="grid">
+      <section class="panel">
+        <div class="panel-head"><h2>数据概览</h2><span class="hint">数据概览 + 目标变量分布</span></div>
+        <div class="metrics">
+          <div class="metric"><div class="label">Shape</div><div class="value">569 x 28</div><div class="hint">27 个特征 + target</div></div>
+          <div class="metric best"><div class="label">缺失值</div><div class="value">0</div><div class="hint">无需缺失填补</div></div>
+          <div class="metric"><div class="label">恶性（0）</div><div class="value">37.3%</div><div class="hint">212 条样本</div></div>
+          <div class="metric"><div class="label">良性（1）</div><div class="value">62.7%</div><div class="hint">357 条样本</div></div>
+        </div>
+        <div style="height:12px"></div>
+        <img class="chart-img" src="reports/cancer_ml_web/eda_target_distribution.png" alt="恶性（0）与良性（1）目标变量分布">
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>标签相关性与分组均值</h2><span class="hint">Top-10 相关特征 + 恶性/良性均值差异</span></div>
+        <img class="chart-img" src="reports/cancer_ml_web/eda_target_corr_top10.png" alt="与恶性（0）/良性（1）标签最相关的 Top-10 特征">
+        <div style="height:12px"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>特征</th><th>恶性（0）均值</th><th>良性（1）均值</th><th>绝对差异</th></tr></thead>
+            <tbody>
+              <tr><td>mean area</td><td>978.38</td><td>462.79</td><td>515.59</td></tr>
+              <tr><td>worst perimeter</td><td>141.37</td><td>87.01</td><td>54.36</td></tr>
+              <tr><td>area error</td><td>72.67</td><td>21.14</td><td>51.54</td></tr>
+              <tr><td>mean perimeter</td><td>115.37</td><td>78.08</td><td>37.29</td></tr>
+              <tr><td>worst radius</td><td>21.13</td><td>13.38</td><td>7.76</td></tr>
+              <tr><td>worst texture</td><td>29.32</td><td>23.52</td><td>5.80</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>关键特征分布</h2><span class="hint">按恶性（0）/良性（1）分组的小提琴图 / 箱线图</span></div>
+        <div class="tabs" role="tablist" aria-label="关键特征分布图">
+          <button class="tab" role="tab" aria-selected="true" data-tab="eda-violin">小提琴图</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="eda-box">箱线图</button>
+        </div>
+        <div id="eda-violin" class="tab-panel active"><img class="chart-img" src="reports/cancer_ml_web/eda_key_feature_violin.png" alt="关键特征按恶性（0）/良性（1）分组的小提琴图"></div>
+        <div id="eda-box" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/eda_key_feature_box.png" alt="关键特征按恶性（0）/良性（1）分组的箱线图"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>相关性热力图</h2><span class="hint">27 个数值特征相关系数矩阵</span></div>
+        <img class="chart-img correlation-img" src="reports/cancer_ml_web/eda_correlation_heatmap_lower.png" alt="27 个特征相关性热力图">
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>模型表现总览</h2><span class="hint">测试集指标，按恶性 ROC-AUC 排序</span></div>
+        <div class="metrics">
+          <div class="metric best"><div class="label">最高 ROC-AUC（恶性）</div><div class="value">0.9954</div><div class="hint">Logistic Regression</div></div>
+          <div class="metric"><div class="label">最高 Accuracy</div><div class="value">98.25%</div><div class="hint">SVM</div></div>
+          <div class="metric"><div class="label">最高 Recall（恶性）</div><div class="value">97.62%</div><div class="hint">Logistic / SVM</div></div>
+          <div class="metric warn"><div class="label">高 VIF 特征</div><div class="value">19</div><div class="hint">VIF &gt; 10</div></div>
+        </div>
+        <div style="height:12px"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>模型</th><th>Accuracy</th><th>Precision（恶性）</th><th>Recall（恶性）</th><th>F1（恶性）</th><th>ROC-AUC（恶性）</th></tr></thead>
+            <tbody>
+              <tr><td>Logistic Regression</td><td>0.9737</td><td>0.9535</td><td>0.9762</td><td>0.9647</td><td>0.9954</td></tr>
+              <tr><td>SVM</td><td>0.9825</td><td>0.9762</td><td>0.9762</td><td>0.9762</td><td>0.9950</td></tr>
+              <tr><td>XGBoost</td><td>0.9474</td><td>0.9500</td><td>0.9048</td><td>0.9268</td><td>0.9917</td></tr>
+              <tr><td>Random Forest</td><td>0.9474</td><td>0.9286</td><td>0.9286</td><td>0.9286</td><td>0.9911</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>AUC 排名</h2><span class="hint">越接近 1，区分能力越强</span></div>
+        <div class="bars" aria-label="模型 AUC 排名">
+          <div class="bar-row"><b>Logistic Regression</b><div class="track"><div class="bar" style="width:99.54%"></div></div><span>0.9954</span></div>
+          <div class="bar-row"><b>SVM</b><div class="track"><div class="bar blue" style="width:99.50%"></div></div><span>0.9950</span></div>
+          <div class="bar-row"><b>XGBoost</b><div class="track"><div class="bar violet" style="width:99.17%"></div></div><span>0.9917</span></div>
+          <div class="bar-row"><b>Random Forest</b><div class="track"><div class="bar amber" style="width:99.11%"></div></div><span>0.9911</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>混淆矩阵结果</h2><span class="hint">4 个基线模型 + 调优模型</span></div>
+        <div class="tabs" role="tablist" aria-label="混淆矩阵">
+          <button class="tab" role="tab" aria-selected="true" data-tab="cm-lr">Logistic</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="cm-svm">SVM</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="cm-rf">Random Forest</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="cm-xgb">XGBoost</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="cm-tuned">Tuned LR</button>
+        </div>
+        <div id="cm-lr" class="tab-panel active"><img class="chart-img" src="reports/cancer_ml_web/cm_logistic_regression.png" alt="Logistic Regression 混淆矩阵"></div>
+        <div id="cm-svm" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/cm_svm.png" alt="SVM 混淆矩阵"></div>
+        <div id="cm-rf" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/cm_random_forest.png" alt="Random Forest 混淆矩阵"></div>
+        <div id="cm-xgb" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/cm_xgboost.png" alt="XGBoost 混淆矩阵"></div>
+        <div id="cm-tuned" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/tuned_confusion_matrix.png" alt="调优后 Logistic Regression 混淆矩阵"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>ROC 曲线对比</h2><span class="hint">4 条模型曲线 + 随机基准线</span></div>
+        <img class="chart-img" src="reports/cancer_ml_web/roc_comparison.png" alt="四个模型的 ROC 曲线对比图">
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>模型解释性图表</h2><span class="hint">来自 Notebook 执行结果</span></div>
+        <div class="tabs" role="tablist" aria-label="解释性图表">
+          <button class="tab" role="tab" aria-selected="true" data-tab="coef">Logistic 系数</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="rf">RF 重要性</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="xgb">XGBoost Gain</button>
+          <button class="tab" role="tab" aria-selected="false" data-tab="perm">Permutation</button>
+        </div>
+        <div id="coef" class="tab-panel active"><img class="chart-img" src="reports/cancer_ml_web/logistic_coefficients.png" alt="逻辑回归系数重要性"></div>
+        <div id="rf" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/random_forest_importance.png" alt="随机森林特征重要性"></div>
+        <div id="xgb" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/xgboost_gain_importance.png" alt="XGBoost gain 特征重要性"></div>
+        <div id="perm" class="tab-panel"><img class="chart-img" src="reports/cancer_ml_web/permutation_importance.png" alt="Permutation importance"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>共线性与调优</h2><span class="hint">VIF 与最终模型</span></div>
+        <div class="two-col">
+          <div>
+            <h2 style="font-size:15px;margin-bottom:8px">VIF Top 6</h2>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>特征</th><th>VIF</th></tr></thead>
+                <tbody>
+                  <tr><td>mean perimeter</td><td>3863.37</td></tr>
+                  <tr><td>mean radius</td><td>3498.44</td></tr>
+                  <tr><td>worst radius</td><td>364.89</td></tr>
+                  <tr><td>worst perimeter</td><td>347.85</td></tr>
+                  <tr><td>mean area</td><td>133.08</td></tr>
+                  <tr><td>perimeter error</td><td>65.72</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <h2 style="font-size:15px;margin-bottom:8px">调优结论</h2>
+            <ul class="insight-list">
+              <li>最佳模型：Logistic Regression。</li>
+              <li>最佳交叉验证 AUC：0.9953。</li>
+              <li>最佳参数：C=1，penalty=L2。</li>
+              <li>调优后测试集 ROC-AUC：0.9954，与基线基本一致。</li>
+            </ul>
+          </div>
+        </div>
+        <div style="height:12px"></div>
+        <img class="chart-img" src="reports/cancer_ml_web/tuned_roc_curve.png" alt="调优后逻辑回归 ROC 曲线">
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>XGBoost 学习曲线</h2><span class="hint">xgb.cv 训练/测试 error</span></div>
+        <img class="chart-img" src="reports/cancer_ml_web/xgboost_learning_curve.png" alt="XGBoost 学习曲线">
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>核心结论</h2><span class="hint">用于课程展示的摘要</span></div>
+        <ul class="insight-list">
+          <li>Logistic Regression 作为线性基线已经取得最高 AUC，说明该数据集的判别边界对线性模型非常友好。</li>
+          <li>SVM 的 Accuracy、Recall 和 F1 略高，适合作为追求整体分类正确率和召回率时的候选模型。</li>
+          <li>Random Forest 与 XGBoost 均表现稳定，但在本次测试集上没有超过线性模型。</li>
+          <li>模型解释性结果反复指向 worst radius、worst perimeter、worst texture、mean concavity 等特征。</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer>
+      页面基于 notebooks/cancer_classification_ml.ipynb 的执行结果生成。仅用于机器学习教学展示，不用于医学诊断。
+    </footer>
+  </div>
+  <script>
+    document.querySelectorAll('.tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        const scope = button.closest('.panel');
+        scope.querySelectorAll('.tab').forEach((item) => item.setAttribute('aria-selected', 'false'));
+        scope.querySelectorAll('.tab-panel').forEach((panel) => panel.classList.remove('active'));
+        button.setAttribute('aria-selected', 'true');
+        document.getElementById(button.dataset.tab).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
